@@ -1,1 +1,33 @@
 // File: background.txt
+Q1. The result of the bitwise OR operation is 0x6B in hexadecimal and 107 in decimal. After performing a left bitwise shift by 5 bits operation the new result
+    is 0xD60 in hex and 3424 in decimal. This answer presupposes that the fixed width of the binary inputs are 32 or 64 bits since it is unspecified.
+
+Q2. 2 milliamperes of current will flow
+
+Q3. An absolute path is a filepath that starts from the root directory and lists all the visited nodes from that point to the file whereas a relative path does not start at the root directory and instead starts at the working directory. The shorthand "~" indicates the home directory; The shorthand ".." indicates the parent directory; The shorthand "." indicates the working directory
+
+Q4. The absolute path to my CS107E directory is "/Users/vizorcloud/cs107e_home/mycode/cs107e". I can quickly change to this directory by just typing "cd $CS107E". 
+
+Q5. I will be using the vim editor and my plan to better situate myself with its functionality and workflow is by watching a few comprehensive tutorials on the dynamics of the editor while following along and experimenting with the knowledge I acquire along the way.
+
+Q6. I will be using a multi-tab setup in the terminal with vim open in one tab and have another tab available for executing certain commands as needed. I will swap between these tabs using CTRL + TAB 
+
+Q7. These are my definitions for the following commands and an example of how/when I would use it.
+	cd - Change to a different directory. I can use this to swap between my assignment directory and home directory.
+	pwd - Prints my current working directory. I used this to find the file path of my CS107E directory for this assignemnt. 
+	ls - Lists all the files in my working directory. I used this to find the printout.py file
+	cat - It prints the contents of a file to the terminal. I used this to see the contents of this text file before I started to edit it with vim.
+	mkdir - It creates a new directory. I can use this if I ever need to create a new subdirectory for one of my assignments.
+	rmdir - It removes a given empty directory. I can use this if I ever need to delete the subdirectory I made for my assignment that I didn't need/store anything in.
+	touch - Creates a new file or updates the modification timestamp of a given file. I can use this if I ever need to create a text file for my assignments.
+	rm - Removes a file or directory. I can use this to delete a directory I have that I no longer need, nor its child files.
+	echo - Prints a given input to the terminal. I can use this to check of the value of a variable with the terminal.
+
+Q8. This is how I plan to incorporate the following features:
+	Tab Completion: I plan to use tab completion to type my commands much quicker and especially my file paths.
+	Command Line Editing: I plan to use this feature to edit my commands if ever I mistyped something rather than just rewrite the whole command on a new line.
+	History: I plan to use this feature to track my history of commands and backtrack if I ever make a mistake or misremember what I previously did to get to a certain point.
+
+Q9. Wikipedia articles on the concepts we use in class are incredibely helpful such as this for File Systems: https://en.wikipedia.org/wiki/Hierarchical_file_system
+
+ 
