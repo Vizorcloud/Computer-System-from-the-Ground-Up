@@ -12,10 +12,11 @@
     lui     a0,0x2000       # a0 holds base addr PB group = 0x2000000
     li	    a1,0x11111111   # a1 = value that sets all PB0-PB7 to output
     sw      a1,0x30(a0)     # config PB0-PB7 as output
+    li      a1,0xFF         # set data state for PB0-PB7 to on
 
 loop:
-    xori    a1,a1,1         # xor ^ 1 invert a1
-    sw      a1,0x40(a0)     # set data value of PB0 to a1
+    sw      a1,0x40(a0)     # toggles the data state for PB0-PB7
+    xori    a1,a1,0xFF      # xor ^ 0xFF invert a1
 
     lui     a2,11000        # a2 = init countdown value
 delay:
@@ -23,3 +24,4 @@ delay:
     bne     a2,zero,delay   # keep counting down until a2 is zero
 
     j       loop            # back to top of outer loop
+
