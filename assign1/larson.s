@@ -10,8 +10,8 @@
  */
 
     lui     a0,0x2000       # a0 holds base addr PB group = 0x2000000
-    addi    a1,zero,1       # a1 holds constant 1
-    sw      a1,0x30(a0)     # config PB0 as output
+    li	    a1,0x11111111   # a1 = value that sets all PB0-PB7 to output
+    sw      a1,0x30(a0)     # config PB0-PB7 as output
 
 loop:
     xori    a1,a1,1         # xor ^ 1 invert a1
