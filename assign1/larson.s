@@ -14,29 +14,27 @@
     sw      a1, 0x30(a0)    			 # config PB0-PB7 as output
     
     li      t0, 0x80        			 # Initialize starting LED (PB7)
-    li      t1, 0           			 # Initialize starting direction (right)
+    li      t1, 1           			 # Initialize starting direction (right)
 
 loop:
     sw      t0, 0x40(a0)     			 # writes current LED state for PB0-PB7
 
-    lui     a2, 11000        			 # a2 = init countdown value
+    lui     a2, 2000        			 # a2 = init countdown value
 
 delay:
     addi    a2, a2, -1        			 # decrement a2	
     bne     a2, zero, delay   			 # keep counting down until a2 is zero
 
-    li      t2, 0x01                		 # Store the value where PB0 is on
+    beq     t1, zero, shift_left                 # Shift current LED to the left if current direction is left
+    srli    t0, t0, 1                            # Else shift current LED to the right by 1
+    li      t2, 0x01                		 # Store the value where PB0 is toggled
     beq     t2, t0, reverse_direction            # Reverse direction if PB0 is the current LED lit
+    j       loop      
+
+shift_left:
+    slli    t0, t0, 1 				 # Shifts current LED to the right by 1
     li      t2, 0x80                             # Store the value where PB7 is on
-    beq     t2, t0, reverse_direction            # Reverse direction if PB7 is the current LED lit     
-
-shift_led:
-    beq     t1, zero, shift_right 		 # Shift current LED to the right if current direction is right
-    slli    t0, t0, 1				 # Else shift current LED to the left by 1  
-    j	    loop
-
-shift_right:
-    srli    t0, t0, 1 				 # Shifts current LED to the right by 1
+    beq     t2, t0, reverse_direction            # Reverse direction if PB7 is the current LED lit
     j       loop
 
 reverse_direction:
