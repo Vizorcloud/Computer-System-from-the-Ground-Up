@@ -1,6 +1,10 @@
 /* File: larson.s
  * --------------
- * ***** TODO: add your file header comment here *****
+ * Purpose: Program that lights 8 LEDs controlled by 8 distinct GPIO PB pins with Larson Scanner
+ * functionality.
+ * Name: Maxsem Garcia
+ * Course: CS107E Tuesday Lab
+ * Date Last Modified: Jan 18 2025z
  */
 
 /*
@@ -17,13 +21,13 @@
     li      t1, 1           			 # Initialize starting direction (right)
 
 loop:
-    sw      t0, 0x40(a0)     			 # writes current LED state for PB0-PB7
+    sw      t0, 0x40(a0)     			 # Writes current LED state for PB0-PB7
 
     lui     a2, 2000        			 # a2 = init countdown value
 
 delay:
-    addi    a2, a2, -1        			 # decrement a2	
-    bne     a2, zero, delay   			 # keep counting down until a2 is zero
+    addi    a2, a2, -1        			 # Decrement a2	
+    bne     a2, zero, delay   			 # Keep counting down until a2 is zero
 
     beq     t1, zero, shift_left                 # Shift current LED to the left if current direction is left
     srli    t0, t0, 1                            # Else shift current LED to the right by 1
