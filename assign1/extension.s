@@ -28,30 +28,44 @@ loop:
     beq     a3, zero, freeze
     
     li      t3, 0                                # Create blank LED pattern
-
     or      t3, t0, t3				 # Turn on current LED
-    
+    lui     a2, 200                             # a2 = init countdown value
+
+delay:
+    li      t3, 0
+
+    or      t3, t0, t3
+
+    li      t5, 3
+    bge     a4, t5, skip_75
     slli    t4, t0, 1
     or      t3, t3, t4
-    slli    t4, t0, 2
-    or      t3, t3, t4
-    slli    t4, t0, 3
-    or      t3, t3, t4
-
     srli    t4, t0, 1
+    or      t3, t3, t4    
+
+skip_75:
+    li      t5, 2
+    bge     a4, t5, skip_50
+    slli    t4, t0, 2
     or      t3, t3, t4
     srli    t4, t0, 2
     or      t3, t3, t4
+
+skip_50:
+    li      t5, 1
+    bge     a4, t5, skip_25
+    slli    t4, t0, 3
+    or      t3, t3, t4
     srli    t4, t0, 3
     or      t3, t3, t4
-
-    andi    t3, t3, 0xFF	
-
-    sw      t3, 0x40(a0)                         # Writes current LED state for PB0-PB7
    
-    lui     a2, 5000                             # a2 = init countdown value
+skip_25:
+    andi    t3, t3, 0xFF
+    sw      t3, 0x40(a0)    
 
-delay:
+    addi    a4, a4, 1
+    andi    a4, a4, 3
+
     addi    a2, a2, -1                           # Decrement a2 
     bne     a2, zero, delay                      # Keep counting down until a2 is zero
 
