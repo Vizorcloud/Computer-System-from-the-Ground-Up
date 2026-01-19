@@ -20,6 +20,7 @@
 
     li      t0, 0x80                             # Initialize starting LED (PB7)
     li      t1, 1                                # Initialize starting direction (right)
+    li      a4, 0                                # Initialize phase counter | Phase 0 - 100%-25% brightness LEDs ON
 
 loop:
     lw      a3, 0x70(a0)
@@ -51,7 +52,7 @@ loop:
     lui     a2, 5000                             # a2 = init countdown value
 
 delay:
-    addi    a2, a2, -1                           # Decrement a2
+    addi    a2, a2, -1                           # Decrement a2 
     bne     a2, zero, delay                      # Keep counting down until a2 is zero
 
     beq     t1, zero, shift_left                 # Shift current LED to the left if current direction is left
