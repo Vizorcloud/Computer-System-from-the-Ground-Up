@@ -16,19 +16,39 @@
     lui     a0, 0x2000                           # a0 holds base addr PB group = 0x2000000
     li      a1, 0x11111111                       # a1 = value that sets all PB0-PB7 to output
     sw      a1, 0x30(a0)                         # config PB0-PB7 as output
-    sw      zero,0x60(a0)                        # config PC0 as input
+    sw      zero, 0x60(a0)                        # config PC0 as input
 
     li      t0, 0x80                             # Initialize starting LED (PB7)
     li      t1, 1                                # Initialize starting direction (right)
 
 loop:
-    lw      a3,0x70(a0)
-    andi    a3,a3,1
-    beq     a3,zero,freeze
+    lw      a3, 0x70(a0)
+    andi    a3, a3, 1
+    beq     a3, zero, freeze
+    
+    li      t3, 0                                # Create blank LED pattern
 
-    sw      t0, 0x40(a0)                         # Writes current LED state for PB0-PB7
+    or      t3, t0, t3				 # Turn on current LED
+    
+    slli    t4, t0, 1
+    or      t3, t3, t4
+    slli    t4, t0, 2
+    or      t3, t3, t4
+    slli    t4, t0, 3
+    or      t3, t3, t4
 
-    lui     a2, 2000                             # a2 = init countdown value
+    srli    t4, t0, 1
+    or      t3, t3, t4
+    srli    t4, t0, 2
+    or      t3, t3, t4
+    srli    t4, t0, 3
+    or      t3, t3, t4
+
+    andi    t3, t3, 0xFF	
+
+    sw      t3, 0x40(a0)                         # Writes current LED state for PB0-PB7
+   
+    lui     a2, 5000                             # a2 = init countdown value
 
 delay:
     addi    a2, a2, -1                           # Decrement a2
@@ -51,7 +71,7 @@ reverse_direction:
     j       loop
 
 freeze:
-    lw      a3,0x70(a0)
-    andi    a3,a3,1
-    bne     a3,zero,loop
+    lw      a3, 0x70(a0)
+    andi    a3, a3, 1
+    bne     a3, zero, loop
     j       freeze
