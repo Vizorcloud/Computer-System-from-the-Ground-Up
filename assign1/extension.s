@@ -23,11 +23,10 @@
     li      a4, 0                                # Initialize phase counter | Phase 0 - 100%-25% brightness LEDs ON
 
 loop:
-    lui     a2, 60                              # a2 = init countdown value
+    lui     a2, 60                               # a2 = init countdown value
 
 delay:
     li      t3, 0     				 # Create Base LED pattern                           
-
     or      t3, t0, t3   	  		 # Light up current LED
 
     li      t5, 3				 # t5 = Value that represents Phase 3
