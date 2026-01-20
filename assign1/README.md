@@ -1,1 +1,1 @@
-Include information for grader about your assign1 here
+I completed all of the listed extensions: Gradient brightness with at least 3 unique levels apart from 0 (I did 4: 100%, 75%, 50%, 25%) and a button which freezes the state of the LED pattern while preserving gradulated brightness levels.
