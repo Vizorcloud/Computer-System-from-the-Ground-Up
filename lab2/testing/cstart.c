@@ -14,7 +14,7 @@ void _cstart(void)
 {
     // zero out all bytes in BSS section, markers from linker script for boundaries
     for (uint8_t *bss = BSS_START; bss < BSS_END; bss++) {
-        *bss++ = 0;
+        *bss = 0;
     }
 
     // Turn on the blue act led (GPIO PD18) before starting main

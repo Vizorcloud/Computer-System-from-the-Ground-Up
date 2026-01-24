@@ -16,7 +16,7 @@ all : codegen.list
 %.o: %.c
 	riscv64-unknown-elf-gcc $(CFLAGS) -c $< -o $@
 
-%.list: %.elf
+list: codegen.elf
 	riscv64-unknown-elf-objdump $(OBJDUMP_FLAGS) -d $<
 
 clean:
