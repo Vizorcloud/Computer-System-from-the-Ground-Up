@@ -1,4 +1,4 @@
-/* File: gpio.c
+/* File: gpio.
  * ------------
  * ***** TODO: add your file header comment here *****
  */
@@ -75,7 +75,27 @@ void gpio_set_output(gpio_id_t pin) {
 }
 
 void gpio_set_function(gpio_id_t pin, unsigned int function) {
-   /***** TODO: Your code goes here *****/
+    if (!gpio_id_is_valid(pin)) return;
+    if (function > GPIO_FN_DISABLED) return;
+    
+    int baseAddress = 0x02000000; // GPIO Module Base Address
+    int configGroupSeperationVal = 0x30; // Space between each config group in memory
+
+    int groupNum = pin >> 8;
+    int pinIndex = pin & 0xFF;
+
+    int configNum = pinIndex / 8;
+    int bitShift  = (pinIndex % 8) * 4; 
+
+    volatile unsigned int *configRegAddress = (volatile unsigned int *)(baseAddress 
+        + 0x30 + (configGroupSeperationVal * groupNum) + configNum);
+
+    unsigned int mask = ~(0xF << bitShift);
+    volatile unsigned int configVal = *configRegAddress; 
+    configVal &= mask;
+    configVal |= function << bitShift;
+
+    *configRegAddress = configVal;
 }
 
 unsigned int gpio_get_function(gpio_id_t pin) {
