@@ -4,6 +4,7 @@
  */
 #include "gpio.h"
 #include <stddef.h>
+#include <stdint.h>
 
 enum { GROUP_B = 0, GROUP_C, GROUP_D, GROUP_E, GROUP_F, GROUP_G };
 
@@ -80,15 +81,17 @@ void gpio_set_output(gpio_id_t pin) {
 }
 
 volatile unsigned int *gpio_get_config_address(gpio_id_t pin) {
-    unsigned int baseAddress = 0x02000000; // GPIO Module Base Address
-    unsigned int configGroupSeparationVal = 0x30; // Space between each config group in memory
+    uintptr_t baseAddress = 0x02000000; // base address as integer
+    unsigned int configGroupSeparationVal = 0x30;
 
     gpio_pin_t gpioPin = get_pin_info(pin);
 
-    volatile unsigned int *configRegAddress = (volatile unsigned int *)(baseAddress 
-        + 0x30 + (configGroupSeparationVal * gpioPin.group) + gpioPin.configRegIndex);
+    // cast integer to pointer of correct type
+    volatile unsigned int *configRegAddress = (volatile unsigned int *)(
+        baseAddress + 0x30 + (configGroupSeparationVal * gpioPin.group) + gpioPin.configRegIndex
+    );
 
-    return configRegAddress;    
+    return configRegAddress;
 }
 
 void gpio_set_function(gpio_id_t pin, unsigned int function) {

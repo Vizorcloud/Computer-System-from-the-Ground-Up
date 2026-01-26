@@ -23,6 +23,18 @@ void abort(void) {
     }
 }
 
+// Test all valid GPIO pins and functions
+void test_gpio_full_range_student(void) {
+    for (gpio_id_t pin = GPIO_ID_FIRST; pin <= GPIO_ID_LAST; pin++) {
+        if (!gpio_id_is_valid(pin)) continue; // skip invalid pins
+
+        for (unsigned int function = GPIO_FN_INPUT; function <= GPIO_FN_DISABLED; function++) {
+            gpio_set_function(pin, function);
+            assert(gpio_get_function(pin) == function);
+        }
+    }
+}
+
 void test_gpio_set_get_function(void) {
     // Test get pin function (pin defaults to disabled)
     assert( gpio_get_function(GPIO_PC0) == GPIO_FN_DISABLED);
@@ -105,6 +117,7 @@ void main(void) {
     // the functions and are ready to test them
 
     test_gpio_set_get_function();
+    test_gpio_full_range_student();
     // test_gpio_read_write();
     // test_timer();
     // test_breadboard_connections();
