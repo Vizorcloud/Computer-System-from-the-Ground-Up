@@ -93,23 +93,29 @@ volatile unsigned int *gpio_get_config_address(gpio_id_t pin) {
 
 void gpio_set_function(gpio_id_t pin, unsigned int function) {
     if (!gpio_id_is_valid(pin)) return;
-    if (function > GPIO_FN_DISABLED) return;
-    
+    if (function > GPIO_FN_DISABLED) return;    
 
-    unsigned int mask = ~(0xF << bitShift);
+    gpio_pin_t gpioPin = get_pin_info(pin);
+
     volatile unsigned int *configPtr = gpio_get_config_address(pin);
     volatile unsigned int configVal = *configPtr; 
+    unsigned int mask = ~(0xF << gpioPin.bitShift);
     configVal &= mask;
-    configVal |= function << bitShift;
+    configVal |= function << gpioPin.bitShift;
 
     *configPtr = configVal;
 }
 
 unsigned int gpio_get_function(gpio_id_t pin) {
     if (!gpio_id_is_valid(pin)) return GPIO_INVALID_REQUEST;
-
+    
+    gpio_pin_t gpioPin = get_pin_info(pin);
+    
     volatile unsigned int *configPtr = gpio_get_config_address(pin);
+    volatile unsigned int configVal = *configPtr;
+    unsigned int pinVal = (configVal >> gpioPin.bitShift) & 0xF;
 
+    return pinVal;
 }
 
 void gpio_write(gpio_id_t pin, int value) {
