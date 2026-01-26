@@ -80,17 +80,13 @@ void gpio_set_output(gpio_id_t pin) {
 }
 
 volatile unsigned int *gpio_get_config_address(gpio_id_t pin) {
-    int baseAddress = 0x02000000; // GPIO Module Base Address
-    int configGroupSeperationVal = 0x30; // Space between each config group in memory
+    unsigned int baseAddress = 0x02000000; // GPIO Module Base Address
+    unsigned int configGroupSeparationVal = 0x30; // Space between each config group in memory
 
-    int groupNum = pin >> 8;
-    int pinIndex = pin & 0xFF;
-
-    int configNum = pinIndex / 8;
-    int bitShift  = (pinIndex % 8) * 4; 
+    gpio_pin_t gpioPin = get_pin_info(pin);
 
     volatile unsigned int *configRegAddress = (volatile unsigned int *)(baseAddress 
-        + 0x30 + (configGroupSeperationVal * groupNum) + configNum);
+        + 0x30 + (configGroupSeparationVal * gpioPin.group) + gpioPin.configRegIndex);
 
     return configRegAddress;    
 }
@@ -99,8 +95,6 @@ void gpio_set_function(gpio_id_t pin, unsigned int function) {
     if (!gpio_id_is_valid(pin)) return;
     if (function > GPIO_FN_DISABLED) return;
     
-    int pinIndex = pin & 0xFF;
-    int bitShift  = (pinIndex % 8) * 4;
 
     unsigned int mask = ~(0xF << bitShift);
     volatile unsigned int *configPtr = gpio_get_config_address(pin);
