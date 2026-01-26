@@ -11,7 +11,8 @@ enum { GROUP_B = 0, GROUP_C, GROUP_D, GROUP_E, GROUP_F, GROUP_G };
 typedef struct  {
     unsigned int group;
     unsigned int pinIndex;
-    unsigned int bitShift;
+    unsigned int configBitShift;
+    unsigned int dataBitShift;
     unsigned int configRegIndex;
 } gpio_pin_t;
 
@@ -27,7 +28,8 @@ static gpio_pin_t get_pin_info(gpio_id_t gpio) {
     gpio_pin_t gp;
     gp.group = gpio >> 8;
     gp.pinIndex = gpio & 0xff; // lower 2 hex digits
-    gp.bitShift = (gp.pinIndex % 8) * 4;
+    gp.configBitShift = (gp.pinIndex % 8) * 4;
+    gp.dataBitShift = gp.pinIndex;
     gp.configRegIndex = gp.pinIndex / 8;
     return gp;
 }
@@ -68,6 +70,20 @@ static volatile unsigned int *get_data_reg(unsigned int group) {
     return NULL;
 }
 
+static volatile unsigned int *gpio_get_data_address(gpio_id_t pin) {
+    uintptr_t baseAddress = 0x02000000; // base address as integer
+    unsigned int configGroupSeparationVal = 0x30;
+
+    gpio_pin_t gpioPin = get_pin_info(pin);
+
+    // cast integer to pointer of correct type
+    volatile unsigned int *dataRegAddress = (volatile unsigned int *)(
+        baseAddress + 0x40 + (configGroupSeparationVal * gpioPin.group)
+    );
+
+    return dataRegAddress;
+}
+
 void gpio_init(void) {
     // no initialization required for this peripheral
 }
@@ -88,7 +104,7 @@ volatile unsigned int *gpio_get_config_address(gpio_id_t pin) {
 
     // cast integer to pointer of correct type
     volatile unsigned int *configRegAddress = (volatile unsigned int *)(
-        baseAddress + 0x30 + (configGroupSeparationVal * gpioPin.group) + gpioPin.configRegIndex
+        baseAddress + 0x30 + (configGroupSeparationVal * gpioPin.group) + (gpioPin.configRegIndex * 4)
     );
 
     return configRegAddress;
@@ -102,9 +118,9 @@ void gpio_set_function(gpio_id_t pin, unsigned int function) {
 
     volatile unsigned int *configPtr = gpio_get_config_address(pin);
     volatile unsigned int configVal = *configPtr; 
-    unsigned int mask = ~(0xF << gpioPin.bitShift);
+    unsigned int mask = ~(0xF << gpioPin.configBitShift);
     configVal &= mask;
-    configVal |= function << gpioPin.bitShift;
+    configVal |= function << gpioPin.configBitShift;
 
     *configPtr = configVal;
 }
@@ -116,18 +132,40 @@ unsigned int gpio_get_function(gpio_id_t pin) {
     
     volatile unsigned int *configPtr = gpio_get_config_address(pin);
     volatile unsigned int configVal = *configPtr;
-    unsigned int pinVal = (configVal >> gpioPin.bitShift) & 0xF;
+    unsigned int pinVal = (configVal >> gpioPin.configBitShift) & 0xF;
 
     return pinVal;
 }
 
+static bool check_Val_Within_Threshold(int lower, int upper, int value) {
+    return (lower <= value) && (value <= upper);
+}
+
 void gpio_write(gpio_id_t pin, int value) {
-    /***** TODO: Your code goes here *****/
+    if (!gpio_id_is_valid(pin)) return;
+    if (!(check_Val_Within_Threshold(0,1,value))) return;
+    
+    gpio_pin_t gpioPin = get_pin_info(pin);
+    
+    volatile unsigned int *dataPtr = gpio_get_data_address(pin);
+    volatile unsigned int dataVal = *dataPtr;
+    unsigned int mask =  ~(0x1 << gpioPin.dataBitShift);
+    dataVal &= mask;
+    dataVal |= value << gpioPin.dataBitShift;
+
+    *dataPtr = dataVal;
 }
 
 int gpio_read(gpio_id_t pin) {
-    /***** TODO: Your code goes here *****/
-    return 0;
+    if (!gpio_id_is_valid(pin)) return GPIO_INVALID_REQUEST;
+
+    gpio_pin_t gpioPin = get_pin_info(pin);
+
+    volatile unsigned int *dataPtr = gpio_get_data_address(pin);
+    volatile unsigned int dataVal = *dataPtr;
+    unsigned int pinVal = (dataVal >> gpioPin.dataBitShift) & 0x1;
+
+    return pinVal;
 }
 
 /*
