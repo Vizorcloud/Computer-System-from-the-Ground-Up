@@ -15,7 +15,7 @@ all: $(NAME).bin
 	riscv64-unknown-elf-objcopy $< -O binary $@
 
 %.elf: start.o cstart.o %.o
-	riscv64-unknown-elf-gcc $(LDFLAGS) $^ -o $@
+	riscv64-unknown-elf-ld $(LDFLAGS) $^ -o $@
 
 %.o: %.c
 	riscv64-unknown-elf-gcc $(CFLAGS) -c $< -o $@

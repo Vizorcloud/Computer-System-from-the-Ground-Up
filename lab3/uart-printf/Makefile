@@ -1,4 +1,4 @@
-NAME    = program
+PROGRAM = hello.bin
 
 ARCH    = -march=rv64im -mabi=lp64
 ASFLAGS = $(ARCH)
@@ -6,7 +6,7 @@ CFLAGS  = $(ARCH) -g -Og -I$$CS107E/include -Wall -ffreestanding
 LDFLAGS = -nostdlib -L$$CS107E/lib -T memmap.ld
 LDLIBS  = -lmango -lmango_gcc
 
-all : $(NAME).bin
+all : $(PROGRAM)
 
 %.bin: %.elf
 	riscv64-unknown-elf-objcopy $< -O binary $@
@@ -20,14 +20,12 @@ all : $(NAME).bin
 %.o: %.s
 	riscv64-unknown-elf-as $(ASFLAGS) $< -o $@
 
-run: $(NAME).bin
+run: $(PROGRAM)
 	mango-run $<
-
-debug: $(NAME).elf
-	riscv64-unknown-elf-gdb -q --command=$$CS107E/other/gdbsim.commands $<
 
 clean:
 	rm -f *.o *.bin *.elf *.list *~
 
 .PHONY: all clean run
 .PRECIOUS: %.elf %.o
+

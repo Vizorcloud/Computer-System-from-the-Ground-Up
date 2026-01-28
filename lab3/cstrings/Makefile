@@ -1,8 +1,8 @@
-NAME    = program
+NAME = cstrings
 
 ARCH    = -march=rv64im -mabi=lp64
 ASFLAGS = $(ARCH)
-CFLAGS  = $(ARCH) -g -Og -I$$CS107E/include -Wall -ffreestanding
+CFLAGS  = $(ARCH) -g -Og -I$$CS107E/include -Wall -Wno-uninitialized -Wno-unused-variable -ffreestanding
 LDFLAGS = -nostdlib -L$$CS107E/lib -T memmap.ld
 LDLIBS  = -lmango -lmango_gcc
 
@@ -20,14 +20,16 @@ all : $(NAME).bin
 %.o: %.s
 	riscv64-unknown-elf-as $(ASFLAGS) $< -o $@
 
-run: $(NAME).bin
+test: $(NAME).bin
 	mango-run $<
 
 debug: $(NAME).elf
-	riscv64-unknown-elf-gdb -q --command=$$CS107E/other/gdbsim.commands $<
+	riscv64-unknown-elf-gdb $(GDB_FLAGS) $<
 
 clean:
 	rm -f *.o *.bin *.elf *.list *~
 
-.PHONY: all clean run
+.PHONY: all clean debug
 .PRECIOUS: %.elf %.o
+
+GDB_FLAGS = -q --command=$$CS107E/other/gdbsim.commands

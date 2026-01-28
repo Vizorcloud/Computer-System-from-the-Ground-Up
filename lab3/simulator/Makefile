@@ -1,4 +1,4 @@
-NAME    = program
+NAME = buggy
 
 ARCH    = -march=rv64im -mabi=lp64
 ASFLAGS = $(ARCH)
@@ -24,10 +24,12 @@ run: $(NAME).bin
 	mango-run $<
 
 debug: $(NAME).elf
-	riscv64-unknown-elf-gdb -q --command=$$CS107E/other/gdbsim.commands $<
+	riscv64-unknown-elf-gdb $(GDB_FLAGS) $<
 
 clean:
 	rm -f *.o *.bin *.elf *.list *~
 
-.PHONY: all clean run
+.PHONY: all clean run debug
 .PRECIOUS: %.elf %.o
+
+GDB_FLAGS = -q --command=$$CS107E/other/gdbsim.commands
