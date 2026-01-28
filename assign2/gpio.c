@@ -1,7 +1,11 @@
-/* File: gpio.
- * ------------
- * ***** TODO: add your file header comment here *****
+/* File: gpio.c
+ * --------------
+ * Purpose: GPIO Pin Module Library Implementation
+ * Name: Maxsem Garcia
+ * Course: CS107E Tuesday Lab
+ * Date Last Modified: Jan 18 2025z
  */
+
 #include "gpio.h"
 #include <stddef.h>
 #include <stdint.h>

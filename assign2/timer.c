@@ -1,7 +1,11 @@
 /* File: timer.c
- * -------------
- * ***** TODO: add your file header comment here *****
+ * --------------
+ * Purpose: Timer Module Library Implementation
+ * Name: Maxsem Garcia
+ * Course: CS107E Tuesday Lab
+ * Date Last Modified: Jan 27 2025
  */
+
 #include "timer.h"
 
 // implemented in file timer_asm.s

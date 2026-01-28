@@ -1,7 +1,11 @@
 /* File: clock.c
- * -------------
- * ***** TODO: add your file header comment here *****
+ * --------------
+ * Purpose: Clock library for managing time on the Mango Pi
+ * Name: Maxsem Garcia
+ * Course: CS107E Tuesday Lab
+ * Date Last Modified: Jan 27 2025
  */
+
 #include "gpio.h"
 #include "timer.h"
 #include <stdint.h>
@@ -69,19 +73,84 @@ void initialize_pins(void) {
     }
 }
 
+void disable_all_digits(void) {
+    for (int d = 0; d < 4; d++) {
+        gpio_write(digit_pins[d], 0);
+    }
+}
+
+void display_digit_at(uint8_t digitIndex, uint8_t digit) {
+    if (digitIndex > 3 || digit > 9) return;
+
+    display_digit(digit);
+    
+    gpio_write(digit_pins[digitIndex], 1);
+}
+
+void refresh_display(uint8_t displayedDigits[4], int refreshRate) {
+    for (int pos = 0; pos < 4; pos++) {
+        disable_all_digits();
+        display_digit_at(pos, displayedDigits[pos]);
+        timer_delay_ms(refreshRate);  // 1 ms per digit
+    }
+}
+
+void seconds_to_digits(int totalSeconds, uint8_t digits[4]) {
+    int minutes = totalSeconds / 60;
+    int seconds = totalSeconds % 60;
+
+    digits[0] = minutes / 10;   // tens of minutes
+    digits[1] = minutes % 10;   // ones of minutes
+    digits[2] = seconds / 10;   // tens of seconds
+    digits[3] = seconds % 10;   // ones of seconds
+}
+
+void wait_for_button(void) {
+    while (gpio_read(GPIO_PD12) == 1) {
+        // idle until button is pressed
+        // keep refreshing display if you want idle pattern
+    }
+}
+
+void run_countdown(int duration) {
+    uint8_t digits[4];
+    int remaining = duration;
+
+    while (remaining >= 0) {
+        seconds_to_digits(remaining, digits);
+
+        // Refresh display many times in a loop over 1 second
+        int loops = 1000 / 2; // 2 ms per digit
+        for (int i = 0; i < 50; i++) {
+            refresh_display(digits, 5); // 2 ms per digit
+        }
+
+        remaining--; // decrement 1 second
+    }
+}
+
+void countdown_finished(void) {
+    for (int i = 0; i < 10; i++) { // blink 10 times
+        for (int d = 0; d < 4; d++) {
+            display_digit_at(d, 8); // display '8' for full segments
+        }
+        timer_delay_ms(500);
+        disable_all_digits();
+        timer_delay_ms(500);
+    }
+}
+
 int main(void) {
     int countdown = DURATION;
     
-    initialize_pins(); 
-    
-    gpio_write(digit_pins[0], 1);
-    
-    while (1) {
-        for (uint8_t d = 0; d < 10; d++) {
-            display_digit(d);
-            timer_delay_ms(500);
-        }
-    }
+    gpio_set_input(GPIO_PD12); 
 
+    initialize_pins();
+    disable_all_digits();
+    
+    wait_for_button();               // wait until user presses button
+    run_countdown(DURATION);         // countdown from DURATION seconds
+    countdown_finished();            // signal end of countdown
+                                           // 
     return countdown;
 }
