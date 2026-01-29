@@ -15,7 +15,7 @@ void stack_array(void) {
     printf("array[] = {");
     for (int i = 12; i < 100; i += 40) { // show a few of the array values
         printf(" 0x%x ", array[i]);
-        array[i]++;     // decrement value (was garbage, now garbage + 1)
+        array[i]++;     // increment value (was garbage, now garbage + 1)
     }
     printf("}\n");
 }
