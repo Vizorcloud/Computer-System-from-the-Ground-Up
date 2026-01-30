@@ -7,6 +7,7 @@
  */
 
 #include "gpio.h"
+#include "gpio_extra.h"
 #include "timer.h"
 #include <stdint.h>
 
@@ -105,11 +106,61 @@ void seconds_to_digits(int totalSeconds, uint8_t digits[4]) {
     digits[3] = seconds % 10;   // ones of seconds
 }
 
-void wait_for_button(void) {
-    while (gpio_read(GPIO_PD12) == 1) {
-        // idle until button is pressed
-        // keep refreshing display if you want idle pattern
+static const int8_t enc_table[16] = {
+     0, -1, +1,  0,
+    +1,  0,  0, -1,
+    -1,  0,  0, +1,
+     0, +1, -1,  0
+};
+
+#define LATCH0 0b00
+#define LATCH3 0b11
+
+int wait_for_button(void) {
+    int duration = DURATION;      // starting value
+    uint8_t digits[4];
+
+    int last_state = (gpio_read(GPIO_PG13) << 1) | gpio_read(GPIO_PG12);
+    int position = 0;             // micro-step counter
+    int lastDetent = 0;           // last full detent value
+
+    while (gpio_read(GPIO_PD12) == 1) { // while button not pressed
+        int A = gpio_read(GPIO_PG13);
+        int B = gpio_read(GPIO_PG12);
+        int state = (A << 1) | B;
+
+        // micro-step delta
+        int delta = enc_table[(last_state << 2) | state];
+        last_state = state;
+
+        if (delta != 0) {
+            position += delta;   // accumulate micro-steps
+
+            // Only update duration at a latch state
+            if (state == LATCH0 || state == LATCH3) {
+                int detent = position >> 1; // full detent
+                int diff = detent - lastDetent;
+
+                if (diff != 0) {
+                    duration += diff;      // increment or decrement by number of detents
+                    if (duration < 0) duration = 0;
+                    lastDetent = detent;  // update last detent
+                }
+            }
+        }
+
+        // refresh display
+        static int counter = 0;
+        counter++;
+        if (counter >= 5) {
+            seconds_to_digits(duration, digits);
+            refresh_display(digits, 5);
+            counter = 0;
+        }
+
+        timer_delay_us(500);
     }
+    return duration;
 }
 
 void run_countdown(int duration) {
@@ -120,7 +171,6 @@ void run_countdown(int duration) {
         seconds_to_digits(remaining, digits);
 
         // Refresh display many times in a loop over 1 second
-        int loops = 1000 / 2; // 2 ms per digit
         for (int i = 0; i < 50; i++) {
             refresh_display(digits, 5); // 2 ms per digit
         }
@@ -131,26 +181,49 @@ void run_countdown(int duration) {
 
 void countdown_finished(void) {
     for (int i = 0; i < 10; i++) { // blink 10 times
-        for (int d = 0; d < 4; d++) {
-            display_digit_at(d, 8); // display '8' for full segments
+        // Fade LED on
+        for (int step = 0; step <= 5; step++) {
+            for (int d = 0; d < 4; d++) {
+                display_digit_at(d, 8); // keep digits visible
+            }
+            gpio_write(GPIO_PB5, 1);       // blue LED on
+            timer_delay_ms(50);       // short step delay
+            gpio_write(GPIO_PB5, 0);     // LED off to simulate fading
+            timer_delay_ms(50);
         }
-        timer_delay_ms(500);
+
+        // Delay to match original blink timing
         disable_all_digits();
         timer_delay_ms(500);
     }
+
+    gpio_write(GPIO_PB1, 0); // ensure LED off at end
 }
 
 int main(void) {
     int countdown = DURATION;
-    
+        
     gpio_set_input(GPIO_PD12); 
+    gpio_set_input(GPIO_PG13);     
+    gpio_set_input(GPIO_PG12);
+    gpio_set_pullup(GPIO_PD12); 
+    gpio_set_pullup(GPIO_PG13);
+    gpio_set_pullup(GPIO_PG12);
+    gpio_set_output(GPIO_PB5);
+    gpio_set_output(GPIO_PB1);    
+    gpio_set_output(GPIO_PD14);
+    gpio_write(GPIO_PB1, 1);    
 
     initialize_pins();
     disable_all_digits();
-    
-    wait_for_button();               // wait until user presses button
-    run_countdown(DURATION);         // countdown from DURATION seconds
+
+    timer_delay_ms(20);   
+    countdown = wait_for_button();    // wait until user presses button
+    gpio_write(GPIO_PB1, 0);
+    gpio_write(GPIO_PD14, 1);
+    run_countdown(countdown);         // countdown from DURATION seconds
+    gpio_write(GPIO_PD14, 0);
     countdown_finished();            // signal end of countdown
-                                           // 
+                                            
     return countdown;
 }

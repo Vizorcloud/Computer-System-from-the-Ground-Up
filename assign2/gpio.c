@@ -16,9 +16,15 @@ typedef struct  {
     unsigned int group;
     unsigned int pinIndex;
     unsigned int configBitShift;
+    unsigned int pullBitShift;
     unsigned int dataBitShift;
     unsigned int configRegIndex;
+    unsigned int pullRegIndex;
 } gpio_pin_t;
+
+
+uintptr_t baseAddress = 0x02000000; // base address as integer
+unsigned int configGroupSeparationVal = 0x30;
 
 // The gpio_id_t enumeration assigns a symbolic constant for each
 // in such a way to use a single hex constant. The more significant
@@ -33,8 +39,10 @@ static gpio_pin_t get_pin_info(gpio_id_t gpio) {
     gp.group = gpio >> 8;
     gp.pinIndex = gpio & 0xff; // lower 2 hex digits
     gp.configBitShift = (gp.pinIndex % 8) * 4;
+    gp.pullBitShift = (gp.pinIndex % 16) * 2;
     gp.dataBitShift = gp.pinIndex;
     gp.configRegIndex = gp.pinIndex / 8;
+    gp.pullRegIndex = gp.pinIndex / 16;
     return gp;
 }
 
@@ -54,30 +62,30 @@ bool gpio_id_is_valid(gpio_id_t pin) {
     }
 }
 
-// This helper function is suggested to return the address of
-// the config0 register for a gpio group, i.e. get_cfg0_reg(GROUP_B)
-// Refer to the D1-H user manual to learn the address the config0 register
-// for each group. Be sure to note how the address of the config1 and
-// config2 register can be computed as relative offset from config0.
-// (okay to discard this function if it doesn't fit with your design)
-static volatile unsigned int *get_cfg0_reg(unsigned int group) {
-    /***** TODO: Your code goes here *****/
-    return NULL;
+volatile unsigned int *gpio_get_config_address(gpio_id_t pin) {
+    gpio_pin_t gpioPin = get_pin_info(pin);
+
+    // cast integer to pointer of correct type
+    volatile unsigned int *configRegAddress = (volatile unsigned int *)(
+        baseAddress + 0x30 + (configGroupSeparationVal * gpioPin.group) + (gpioPin.configRegIndex * 4)
+    );
+
+    return configRegAddress;
 }
 
-// This helper function is suggested to return the address of
-// the data register for a gpio group. Refer to the D1-H user manual
-// to learn the address of the data register for each group.
-// (okay to discard this function if it doesn't fit with your design)
-static volatile unsigned int *get_data_reg(unsigned int group) {
-    /***** TODO: Your code goes here *****/
-    return NULL;
+
+volatile unsigned int *gpio_get_pull_address(gpio_id_t pin) {
+    gpio_pin_t gpioPin = get_pin_info(pin);
+
+    // cast integer to pointer of correct type
+    volatile unsigned int *pullRegAddress = (volatile unsigned int *)(
+        baseAddress + 0x54 + (configGroupSeparationVal * gpioPin.group) + (gpioPin.pullRegIndex * 4)
+    );
+
+    return pullRegAddress;
 }
 
 static volatile unsigned int *gpio_get_data_address(gpio_id_t pin) {
-    uintptr_t baseAddress = 0x02000000; // base address as integer
-    unsigned int configGroupSeparationVal = 0x30;
-
     gpio_pin_t gpioPin = get_pin_info(pin);
 
     // cast integer to pointer of correct type
@@ -86,6 +94,10 @@ static volatile unsigned int *gpio_get_data_address(gpio_id_t pin) {
     );
 
     return dataRegAddress;
+}
+
+static bool check_Val_Within_Threshold(int lower, int upper, int value) {
+    return (lower <= value) && (value <= upper);
 }
 
 void gpio_init(void) {
@@ -98,20 +110,6 @@ void gpio_set_input(gpio_id_t pin) {
 
 void gpio_set_output(gpio_id_t pin) {
     gpio_set_function(pin, GPIO_FN_OUTPUT);
-}
-
-volatile unsigned int *gpio_get_config_address(gpio_id_t pin) {
-    uintptr_t baseAddress = 0x02000000; // base address as integer
-    unsigned int configGroupSeparationVal = 0x30;
-
-    gpio_pin_t gpioPin = get_pin_info(pin);
-
-    // cast integer to pointer of correct type
-    volatile unsigned int *configRegAddress = (volatile unsigned int *)(
-        baseAddress + 0x30 + (configGroupSeparationVal * gpioPin.group) + (gpioPin.configRegIndex * 4)
-    );
-
-    return configRegAddress;
 }
 
 void gpio_set_function(gpio_id_t pin, unsigned int function) {
@@ -141,10 +139,6 @@ unsigned int gpio_get_function(gpio_id_t pin) {
     return pinVal;
 }
 
-static bool check_Val_Within_Threshold(int lower, int upper, int value) {
-    return (lower <= value) && (value <= upper);
-}
-
 void gpio_write(gpio_id_t pin, int value) {
     if (!gpio_id_is_valid(pin)) return;
     if (!(check_Val_Within_Threshold(0,1,value))) return;
@@ -172,9 +166,14 @@ int gpio_read(gpio_id_t pin) {
     return pinVal;
 }
 
-/*
 void gpio_set_pullup(gpio_id_t pin) {
-    ***** EXTENSION TODO: Your code goes here *****
-    (If you are not doing the extension, leave this function unimplemented and commented out
+    gpio_pin_t gpioPin = get_pin_info(pin);
+
+    volatile unsigned int *pullPtr = gpio_get_pull_address(pin);
+    volatile unsigned int pullVal = *pullPtr;
+    unsigned int mask = ~(0x3 << gpioPin.pullBitShift);
+    pullVal &= mask;
+    pullVal |= 0x01 << gpioPin.pullBitShift;
+
+    *pullPtr = pullVal;
 }
-*/
