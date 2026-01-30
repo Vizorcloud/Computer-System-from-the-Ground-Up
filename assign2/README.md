@@ -3,3 +3,5 @@
 countdown has ended
 3. DISCLAIMER: In the video the flashing of the clock is observable due to the frame rate of my camera. To the human eye the countdown does not look as "glitchy" as it does in the video. Please disregard.
 4. Learned: I learned how to use encoder tables to map and record 2 bit Quadrature Output. I also learned generally how to wire and use rotary encoders and multi-color RGB LED lights. Finally, I learned how to set the internal pullup resistance of input pins so that I do not need to manually add a resistor every time I want to record voltage with a pin.
+
+Youtube Demo link: https://youtu.be/tIV4Frzk5dU
