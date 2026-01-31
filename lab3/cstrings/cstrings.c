@@ -70,6 +70,10 @@ void main(void) {
     // below are tests that make wrong-headed call to strlen
     // uncomment these one by one and run to see what the consequences
     // of these calls
+    // Try both using "make test" to run the test the actual Pi and
+    // using "make debug" to run the test under the gdb simulator
+    // Do you get same result?
+
     // bogus_strlen_uninitialized();   // bogus #1
     // bogus_strlen_no_terminator();   // bogus #2
     // bogus_strlen_null_ptr();        // bogus #3
