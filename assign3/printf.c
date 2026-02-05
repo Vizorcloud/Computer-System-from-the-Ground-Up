@@ -106,18 +106,10 @@ void num_to_string(unsigned long num, int base, char *outstr) {
     outstr[index] = '\0';
 }
 
-int vsnprintf(char *buf, size_t bufsize, const char *format, va_list args) {
-    /***** TODO: Your code goes here *****/
-    return 0;
-}
-
-int snprintf(char *buf, size_t bufsize, const char *format, ...) {
+int vsnprintf(char *buf, size_t bufsize, const char *format, va_list args) {           
     size_t bufIndex = 0;
     size_t formatIndex = 0;
-    
-    va_list ap;
-    va_start(ap, format); // init va_list, read arguments following argument named format
-    
+     
     while (format[formatIndex] != '\0') {
         if (format[formatIndex] == '%') {
             formatIndex++;
@@ -136,7 +128,7 @@ int snprintf(char *buf, size_t bufsize, const char *format, ...) {
 
                     switch (format[formatIndex]) {
                         case 'd': {
-                            long decimal = va_arg(ap, long);
+                            long decimal = va_arg(args, long);
                             const char *decimalStr = decimal_string(decimal);
                             int decimalIndex = 0;
                             int numLen = strlen(decimalStr);
@@ -145,14 +137,14 @@ int snprintf(char *buf, size_t bufsize, const char *format, ...) {
                             char padChar = ' ';  // Space for decimal
                             
                             for (int i = 0; i < padCount; i++) {
-                                if (bufIndex < bufsize - 1) {
+                                if (bufsize > 0 && bufIndex < bufsize - 1) {
                                     buf[bufIndex] = padChar;
                                 }
                                 bufIndex++;
                             }
 
                             while (decimalStr[decimalIndex] != '\0') {
-                                if (bufIndex < bufsize - 1) {
+                                if (bufsize > 0 && bufIndex < bufsize - 1) {
                                     buf[bufIndex] = decimalStr[decimalIndex];
                                 }
                                 decimalIndex++;
@@ -162,7 +154,7 @@ int snprintf(char *buf, size_t bufsize, const char *format, ...) {
                             break;
                         }
                         case 'x': {
-                            unsigned long hex = va_arg(ap, unsigned long);
+                            unsigned long hex = va_arg(args, unsigned long);
                             const char *hexStr = hex_string(hex);
                             int hexLen = strlen(hexStr);
     
@@ -170,7 +162,7 @@ int snprintf(char *buf, size_t bufsize, const char *format, ...) {
                             char padChar = '0';  // Zero for hex
     
                             for (int i = 0; i < padCount; i++) {
-                                if (bufIndex < bufsize - 1) {
+                                if (bufsize > 0 && bufIndex < bufsize - 1) {
                                     buf[bufIndex] = padChar;
                                 }
                                 bufIndex++;
@@ -179,7 +171,7 @@ int snprintf(char *buf, size_t bufsize, const char *format, ...) {
                             int hexIndex = 0;
                             
                             while (hexStr[hexIndex] != '\0') {
-                                if (bufIndex < bufsize - 1) {
+                                if (bufsize > 0 && bufIndex < bufsize - 1) {
                                     buf[bufIndex] = hexStr[hexIndex];
                                 }
                                 bufIndex++;
@@ -192,7 +184,7 @@ int snprintf(char *buf, size_t bufsize, const char *format, ...) {
                     break;  
                 }
                 case 'd': {
-                    int decimal = va_arg(ap, int);
+                    int decimal = va_arg(args, int);
                     const char *decimalStr = decimal_string(decimal);
                     int decimalIndex = 0;
                                         
@@ -202,14 +194,14 @@ int snprintf(char *buf, size_t bufsize, const char *format, ...) {
                     char padChar = ' ';  // Space for decimal
                             
                     for (int i = 0; i < padCount; i++) {
-                        if (bufIndex < bufsize - 1) {
+                        if (bufsize > 0 && bufIndex < bufsize - 1) {
                             buf[bufIndex] = padChar;
                         }
                         bufIndex++;
                     }
 
                     while (decimalStr[decimalIndex] != '\0') {
-                        if (bufIndex < bufsize - 1) {
+                        if (bufsize > 0 && bufIndex < bufsize - 1) {
                             buf[bufIndex] = decimalStr[decimalIndex];
                         }
                         decimalIndex++;
@@ -218,7 +210,7 @@ int snprintf(char *buf, size_t bufsize, const char *format, ...) {
                     break;
                 }
                 case 's': {
-                    char *str = va_arg(ap, char *);
+                    char *str = va_arg(args, char *);
                     int strIndex = 0;
                     int strLen = strlen(str);
 
@@ -226,14 +218,14 @@ int snprintf(char *buf, size_t bufsize, const char *format, ...) {
                     char padChar = ' ';
 
                     for (int i = 0; i < padCount; i++) {
-                        if (bufIndex < bufsize - 1) {
+                        if (bufsize > 0 && bufIndex < bufsize - 1) {
                             buf[bufIndex] = padChar; // strings always space-padded    
                         }
                         bufIndex++;
                     }
 
                     while (str[strIndex] != '\0') {
-                        if (bufIndex < bufsize - 1) {
+                        if (bufsize > 0 && bufIndex < bufsize - 1) {
                             buf[bufIndex] = str[strIndex];
                         }
                         bufIndex++;
@@ -243,26 +235,26 @@ int snprintf(char *buf, size_t bufsize, const char *format, ...) {
                     break;
                 }
                 case 'c': {
-                    int ch = va_arg(ap, int);
+                    int ch = va_arg(args, int);
                     
                     int padCount = fieldWidth > 1 ? fieldWidth - 1 : 0;                    
                     char padChar = ' ';
 
                     for (int i = 0; i < padCount; i++) {
-                        if (bufIndex < bufsize - 1) {
+                        if (bufsize > 0 && bufIndex < bufsize - 1) {
                             buf[bufIndex] = padChar;
                         }
                         bufIndex++;
                     }
 
-                    if (bufIndex < bufsize - 1) {
+                    if (bufsize > 0 && bufIndex < bufsize - 1) {
                         buf[bufIndex] = ch;
                     }
                     bufIndex++;
                     break;
                 }
                 case 'x': {
-                    unsigned long hex = va_arg(ap, unsigned long);
+                    unsigned long hex = va_arg(args, unsigned long);
                     const char *hexStr = hex_string(hex);
                                     
                     int hexLen = strlen(hexStr);
@@ -271,7 +263,7 @@ int snprintf(char *buf, size_t bufsize, const char *format, ...) {
                     char padChar = '0';  // Zero for hex
     
                     for (int i = 0; i < padCount; i++) {
-                        if (bufIndex < bufsize - 1) {
+                        if (bufsize > 0 && bufIndex < bufsize - 1) {
                             buf[bufIndex] = padChar;
                         }
                         bufIndex++;
@@ -280,7 +272,7 @@ int snprintf(char *buf, size_t bufsize, const char *format, ...) {
                     int hexIndex = 0;
                     
                     while (hexStr[hexIndex] != '\0') {
-                        if (bufIndex < bufsize - 1) {
+                        if (bufsize > 0 && bufIndex < bufsize - 1) {
                             buf[bufIndex] = hexStr[hexIndex];
                         }
                         bufIndex++;
@@ -289,26 +281,26 @@ int snprintf(char *buf, size_t bufsize, const char *format, ...) {
                     break;
                 }
                 case 'p': {
-                    unsigned long ptr = (unsigned long)va_arg(ap, void *);
+                    unsigned long ptr = (unsigned long)va_arg(args, void *);
                     const char *hexStr = hex_string(ptr); // use existing hex_string
                     int hexLen = strlen(hexStr);
                     int totalLen = hexLen + 2;
                     int padCount = fieldWidth > totalLen ? fieldWidth - totalLen : 0;
 
+                    if (bufsize > 0 && bufIndex < bufsize - 1) buf[bufIndex] = '0';
+                    bufIndex++;
+                    if (bufsize > 0 && bufIndex < bufsize - 1) buf[bufIndex] = 'x';
+                    bufIndex++;
+                 
                     for (int i = 0; i < padCount; i++) {
-                        if (bufIndex < bufsize - 1) {
+                        if (bufsize > 0 && bufIndex < bufsize - 1) {
                             buf[bufIndex] = '0';
                         }
                         bufIndex++;
                     }
 
-                    if (bufIndex < bufsize - 1) buf[bufIndex] = '0';
-                    bufIndex++;
-                    if (bufIndex < bufsize - 1) buf[bufIndex] = 'x';
-                    bufIndex++;
-
                     for (int i = 0; i < hexLen; i++) {
-                        if (bufIndex < bufsize - 1) {
+                        if (bufsize > 0 && bufIndex < bufsize - 1) {
                             buf[bufIndex] = hexStr[i];
                         }
                         bufIndex++;
@@ -316,7 +308,7 @@ int snprintf(char *buf, size_t bufsize, const char *format, ...) {
                     break;
                 }
                 case '%': {
-                    if (bufIndex < bufsize - 1) {
+                    if (bufsize > 0 && bufIndex < bufsize - 1) {
                         buf[bufIndex] = '%';
                     }
                     bufIndex++;
@@ -327,7 +319,7 @@ int snprintf(char *buf, size_t bufsize, const char *format, ...) {
             }
             formatIndex++;
         } else {
-            if (bufIndex < bufsize - 1) {
+            if (bufsize > 0 && bufIndex < bufsize - 1) {
                 buf[bufIndex] = format[formatIndex];
             }
             formatIndex++;
@@ -338,17 +330,31 @@ int snprintf(char *buf, size_t bufsize, const char *format, ...) {
     if (bufsize > 0) {
         buf[bufIndex < bufsize ? bufIndex : bufsize - 1] = '\0';
     }    
-    va_end(ap);
 
     return bufIndex;
+}
+
+int snprintf(char *buf, size_t bufsize, const char *format, ...) {
+    va_list ap;
+    va_start(ap, format);
+    int n = vsnprintf(buf, bufsize, format, ap);
+    va_end(ap);
+    return n;
 }
 
 // ok to assume printf output is never longer that MAX_OUTPUT_LEN
 #define MAX_OUTPUT_LEN 1024
 
 int printf(const char *format, ...) {
-    /***** TODO: Your code goes here *****/
-    return 0;
+    size_t bufsize = 1024;
+    char buf[bufsize];
+    va_list ap;
+    va_start(ap, format);
+    int n = vsnprintf(buf, bufsize, format, ap);
+    va_end(ap);
+
+    uart_putstring(buf);
+    return n;
 }
 
 
