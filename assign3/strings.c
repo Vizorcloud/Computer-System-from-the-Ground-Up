@@ -1,6 +1,9 @@
 /* File: strings.c
  * ---------------
- * ***** TODO: add your file header comment here *****
+ * Purpose: Strings Module Library Implementation
+ * Name: Maxsem Garcia
+ * Course: CS107E Tuesday Lab
+ * Date Last Modified: Feb 5 2025
  */
 #include "strings.h"
 #include <stdbool.h>
@@ -105,6 +108,9 @@ unsigned long strtonum(const char *str, const char **endptr) {
     unsigned char charIndex = 0;
     
     if (!isDigit(str[0])) {
+        if (endptr != NULL) {
+            *endptr = &str[charIndex];
+        }
         return 0;
     } else if (str[0] == '0' && str[1] == 'x') { 
         charIndex = 2; // Skip the 0x

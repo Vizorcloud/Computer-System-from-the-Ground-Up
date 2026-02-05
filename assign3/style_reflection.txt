@@ -1,1 +1,69 @@
 // Style reflection submitted with assign3
+
+1. 
+typedef struct  {
+    unsigned int group;
+    unsigned int pinIndex;
+    unsigned int configBitShift;
+    unsigned int pullBitShift;
+    unsigned int dataBitShift;
+    unsigned int configRegIndex;
+    unsigned int pullRegIndex;
+} gpio_pin_t;
+
+static gpio_pin_t get_pin_info(gpio_id_t gpio) {
+    gpio_pin_t gp;
+    gp.group = gpio >> 8;
+    gp.pinIndex = gpio & 0xff;
+    gp.configBitShift = (gp.pinIndex % 8) * 4;
+    gp.pullBitShift = (gp.pinIndex % 16) * 2;
+    gp.dataBitShift = gp.pinIndex;
+    gp.configRegIndex = gp.pinIndex / 8;
+    gp.pullRegIndex = gp.pinIndex / 16;
+    return gp;
+}
+
+unsigned int gpio_get_function(gpio_id_t pin) {
+    if (!gpio_id_is_valid(pin)) return GPIO_INVALID_REQUEST;
+
+    gpio_pin_t gpioPin = get_pin_info(pin);
+    volatile unsigned int *configPtr = gpio_get_config_address(pin);
+    volatile unsigned int configVal = *configPtr;
+    unsigned int pinVal = (configVal >> gpioPin.configBitShift) & 0xF;
+
+    return pinVal;
+}
+
+2. In my clock application, I chose to represent time as a single integer storing the total number of seconds remaining in the countdown. This made it very simple to make different calculations and comparisons by performing simple arithmetic/comparisons on one variable, rather than keeping separate variables for minutes and seconds. One aspect of the assignment that would have been easier with a seperate minutes and seconds approach is directly displaying the tens and ones of minutes without needing to divide and mod by 60. Nevertheless, I believe it to be a minor tradeoff for the benefit of only having to keep track of a single variable for the timer. Indeed, by making the conversions a helper function I was also able to mitigate that disadvantage of my strategy by abstracting the process.
+
+3. It is incredibly important memset only writes within the bounds we give it because writing beyond the bounds of a buffer can corrupt other variables, cause undefined behavior, and/or crash the program. Other variables and function calls
+on the stack are using those memory addresses so writing in them incidentally will overwrite the previous data and cause
+many issues. Buffer overflows also pose a cybersecurity risk as I learned in office hours as attackers can exploit that
+overflow within the program to execute arbitrary code into other addresses that again can overwrite and crash programs. Ensuring memset only touches the intended memory guarantees that other parts of the program remain stable and reliable.
+
+static void test_memset_bounds(void) {
+    char block[25 + 8 + 8];  // 8 guard bytes before + buffer + 8 guard bytes after
+    char *before = block;
+    char *buf = block + 8;   // main buffer starts after first 8 bytes
+    char *after = block + 8 + 25;
+
+    // Initialize guard bytes
+    for (int i = 0; i < 8; i++) {
+        before[i] = 0xAA;
+        after[i]  = 0xBB;
+    }
+
+    // Call memset on the main buffer
+    memset(buf, 0x7e, 25);
+
+    // Verify the buffer itself
+    for (int i = 0; i < 25; i++) {
+        assert(buf[i] == 0x7e);
+    }
+
+    // Verify the guard bytes were not overwritten
+    for (int i = 0; i < 8; i++) {
+        assert(before[i] == 0xAA);
+        assert(after[i] == 0xBB);
+    }
+}
