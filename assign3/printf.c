@@ -60,8 +60,50 @@ const char *decimal_string(long val) {
     return buf;
 }
 
+unsigned char toChar(unsigned int num) {
+    if (num < 10) {
+        return '0' + num;
+    } else {
+        return 'a' + (num - 10);
+    }
+}
+
 void num_to_string(unsigned long num, int base, char *outstr) {
-    /***** TODO: Your code goes here *****/
+    unsigned int buffer[64];
+    unsigned long dividend = num;
+    unsigned int remainder = 0;
+    unsigned int index = 0;
+
+    // Handle special case
+    if (num == 0) {
+        outstr[0] = '0';
+        outstr[1] = '\0';
+        return;
+    }
+
+    if (base == 10) {
+        while (dividend > 0) {
+            remainder = dividend % 10;
+            buffer[index] = remainder; 
+            dividend = dividend / 10;
+            index++;
+        }
+    } else if (base == 16) { 
+        while (dividend > 0) {
+            remainder = dividend % 16;
+            buffer[index] = remainder; 
+            dividend = dividend / 16;
+            index++;
+        }
+    }
+    
+    int indexOffset = index - 1;
+
+    for (int i = indexOffset; i >= 0; i--) {
+        outstr[indexOffset - i] = toChar(buffer[i]);
+    }
+
+    outstr[index] = '\0';
 }
 
 int vsnprintf(char *buf, size_t bufsize, const char *format, va_list args) {
@@ -70,8 +112,235 @@ int vsnprintf(char *buf, size_t bufsize, const char *format, va_list args) {
 }
 
 int snprintf(char *buf, size_t bufsize, const char *format, ...) {
-    /***** TODO: Your code goes here *****/
-    return 0;
+    size_t bufIndex = 0;
+    size_t formatIndex = 0;
+    
+    va_list ap;
+    va_start(ap, format); // init va_list, read arguments following argument named format
+    
+    while (format[formatIndex] != '\0') {
+        if (format[formatIndex] == '%') {
+            formatIndex++;
+            
+            unsigned long fieldWidth = 0;
+                        
+            if (format[formatIndex] >= '0' && format[formatIndex] <= '9') {
+                const char *afterWidth;
+                fieldWidth = strtonum(&format[formatIndex], &afterWidth);
+                formatIndex = afterWidth - format;                       
+            }
+            
+            switch (format[formatIndex]) {
+                case 'l': {
+                    formatIndex++;
+
+                    switch (format[formatIndex]) {
+                        case 'd': {
+                            long decimal = va_arg(ap, long);
+                            const char *decimalStr = decimal_string(decimal);
+                            int decimalIndex = 0;
+                            int numLen = strlen(decimalStr);
+                            
+                            int padCount = fieldWidth > numLen ? fieldWidth - numLen : 0;
+                            char padChar = ' ';  // Space for decimal
+                            
+                            for (int i = 0; i < padCount; i++) {
+                                if (bufIndex < bufsize - 1) {
+                                    buf[bufIndex] = padChar;
+                                }
+                                bufIndex++;
+                            }
+
+                            while (decimalStr[decimalIndex] != '\0') {
+                                if (bufIndex < bufsize - 1) {
+                                    buf[bufIndex] = decimalStr[decimalIndex];
+                                }
+                                decimalIndex++;
+                                bufIndex++;
+                            }
+
+                            break;
+                        }
+                        case 'x': {
+                            unsigned long hex = va_arg(ap, unsigned long);
+                            const char *hexStr = hex_string(hex);
+                            int hexLen = strlen(hexStr);
+    
+                            int padCount = fieldWidth > hexLen ? fieldWidth - hexLen : 0;
+                            char padChar = '0';  // Zero for hex
+    
+                            for (int i = 0; i < padCount; i++) {
+                                if (bufIndex < bufsize - 1) {
+                                    buf[bufIndex] = padChar;
+                                }
+                                bufIndex++;
+                            }
+                            
+                            int hexIndex = 0;
+                            
+                            while (hexStr[hexIndex] != '\0') {
+                                if (bufIndex < bufsize - 1) {
+                                    buf[bufIndex] = hexStr[hexIndex];
+                                }
+                                bufIndex++;
+                                hexIndex++;
+                            }
+                            
+                            break;
+                        }
+                    }
+                    break;  
+                }
+                case 'd': {
+                    int decimal = va_arg(ap, int);
+                    const char *decimalStr = decimal_string(decimal);
+                    int decimalIndex = 0;
+                                        
+                    int numLen = strlen(decimalStr);
+                            
+                    int padCount = fieldWidth > numLen ? fieldWidth - numLen : 0;
+                    char padChar = ' ';  // Space for decimal
+                            
+                    for (int i = 0; i < padCount; i++) {
+                        if (bufIndex < bufsize - 1) {
+                            buf[bufIndex] = padChar;
+                        }
+                        bufIndex++;
+                    }
+
+                    while (decimalStr[decimalIndex] != '\0') {
+                        if (bufIndex < bufsize - 1) {
+                            buf[bufIndex] = decimalStr[decimalIndex];
+                        }
+                        decimalIndex++;
+                        bufIndex++;
+                    }
+                    break;
+                }
+                case 's': {
+                    char *str = va_arg(ap, char *);
+                    int strIndex = 0;
+                    int strLen = strlen(str);
+
+                    int padCount = fieldWidth > strLen ? fieldWidth - strLen : 0;
+                    char padChar = ' ';
+
+                    for (int i = 0; i < padCount; i++) {
+                        if (bufIndex < bufsize - 1) {
+                            buf[bufIndex] = padChar; // strings always space-padded    
+                        }
+                        bufIndex++;
+                    }
+
+                    while (str[strIndex] != '\0') {
+                        if (bufIndex < bufsize - 1) {
+                            buf[bufIndex] = str[strIndex];
+                        }
+                        bufIndex++;
+                        strIndex++;
+                    }
+
+                    break;
+                }
+                case 'c': {
+                    int ch = va_arg(ap, int);
+                    
+                    int padCount = fieldWidth > 1 ? fieldWidth - 1 : 0;                    
+                    char padChar = ' ';
+
+                    for (int i = 0; i < padCount; i++) {
+                        if (bufIndex < bufsize - 1) {
+                            buf[bufIndex] = padChar;
+                        }
+                        bufIndex++;
+                    }
+
+                    if (bufIndex < bufsize - 1) {
+                        buf[bufIndex] = ch;
+                    }
+                    bufIndex++;
+                    break;
+                }
+                case 'x': {
+                    unsigned long hex = va_arg(ap, unsigned long);
+                    const char *hexStr = hex_string(hex);
+                                    
+                    int hexLen = strlen(hexStr);
+    
+                    int padCount = fieldWidth > hexLen ? fieldWidth - hexLen : 0;
+                    char padChar = '0';  // Zero for hex
+    
+                    for (int i = 0; i < padCount; i++) {
+                        if (bufIndex < bufsize - 1) {
+                            buf[bufIndex] = padChar;
+                        }
+                        bufIndex++;
+                    }
+                    
+                    int hexIndex = 0;
+                    
+                    while (hexStr[hexIndex] != '\0') {
+                        if (bufIndex < bufsize - 1) {
+                            buf[bufIndex] = hexStr[hexIndex];
+                        }
+                        bufIndex++;
+                        hexIndex++;
+                    }
+                    break;
+                }
+                case 'p': {
+                    unsigned long ptr = (unsigned long)va_arg(ap, void *);
+                    const char *hexStr = hex_string(ptr); // use existing hex_string
+                    int hexLen = strlen(hexStr);
+                    int totalLen = hexLen + 2;
+                    int padCount = fieldWidth > totalLen ? fieldWidth - totalLen : 0;
+
+                    for (int i = 0; i < padCount; i++) {
+                        if (bufIndex < bufsize - 1) {
+                            buf[bufIndex] = '0';
+                        }
+                        bufIndex++;
+                    }
+
+                    if (bufIndex < bufsize - 1) buf[bufIndex] = '0';
+                    bufIndex++;
+                    if (bufIndex < bufsize - 1) buf[bufIndex] = 'x';
+                    bufIndex++;
+
+                    for (int i = 0; i < hexLen; i++) {
+                        if (bufIndex < bufsize - 1) {
+                            buf[bufIndex] = hexStr[i];
+                        }
+                        bufIndex++;
+                    }
+                    break;
+                }
+                case '%': {
+                    if (bufIndex < bufsize - 1) {
+                        buf[bufIndex] = '%';
+                    }
+                    bufIndex++;
+                    break;
+                }
+                default:
+                    break;
+            }
+            formatIndex++;
+        } else {
+            if (bufIndex < bufsize - 1) {
+                buf[bufIndex] = format[formatIndex];
+            }
+            formatIndex++;
+            bufIndex++;
+        }
+    }
+
+    if (bufsize > 0) {
+        buf[bufIndex < bufsize ? bufIndex : bufsize - 1] = '\0';
+    }    
+    va_end(ap);
+
+    return bufIndex;
 }
 
 // ok to assume printf output is never longer that MAX_OUTPUT_LEN
