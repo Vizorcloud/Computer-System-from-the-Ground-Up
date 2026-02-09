@@ -262,6 +262,8 @@ int vsnprintf(char *buf, size_t bufsize, const char *format, va_list args) {
                 const char *afterWidth;
                 fieldWidth = strtonum(&format[formatIndex], &afterWidth);
                 formatIndex = afterWidth - format;                       
+            } else if (format[formatIndex] == 'p') {
+                fieldWidth = 8;
             }
             
             switch (format[formatIndex]) {
@@ -396,7 +398,7 @@ int vsnprintf(char *buf, size_t bufsize, const char *format, va_list args) {
                     break;
                 }
                 case 'x': {
-                    unsigned long hex = va_arg(args, unsigned long);
+                    unsigned int hex = va_arg(args, unsigned int);
                     const char *hexStr = hex_string(hex);
                                     
                     int hexLen = strlen(hexStr);
@@ -440,7 +442,7 @@ int vsnprintf(char *buf, size_t bufsize, const char *format, va_list args) {
                         unsigned long ptr = (unsigned long)va_arg(args, void *);
                         const char *hexStr = hex_string(ptr);
                         int hexLen = strlen(hexStr);
-                        int totalLen = hexLen + 2;
+                        int totalLen = hexLen;
                         int padCount = fieldWidth > totalLen ? fieldWidth - totalLen : 0;
 
                         if (bufsize > 0 && bufIndex < bufsize - 1) buf[bufIndex] = '0';
