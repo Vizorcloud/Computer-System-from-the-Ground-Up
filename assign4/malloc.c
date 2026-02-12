@@ -1,6 +1,9 @@
 /* File: malloc.c
  * --------------
- * ***** TODO: add your file header comment here *****
+ * Purpose: Malloc Module Library Implementation
+ * Name: Maxsem Garcia
+ * Course: CS107E Tuesday Lab
+ * Date Last Modified: Feb 12 2025
  */
 
 
