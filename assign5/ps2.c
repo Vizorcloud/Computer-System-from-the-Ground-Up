@@ -7,6 +7,8 @@
 #include "malloc.h"
 #include "ps2.h"
 
+#define TICKS_PER_USEC 24 // 24 ticks counted per one microsecond
+#define PS2_BIT_MAX_GAP_US 500
 // A ps2_device is a structure that stores all of the state and information
 // needed for a PS2 device. The clock field stores the gpio id for the
 // clock pin, and the data field stores the gpio id for the data pin.
@@ -25,6 +27,14 @@ struct ps2_device {
 };
 
 // Creates a new PS2 device connected to given clock and data pins,
+struct scan_code {
+    unsigned int startBit;
+    unsigned int dataNum;
+    unsigned int parityBit;
+    unsigned int stopBit;
+    int onesCount;
+};
+
 // The gpios are configured as input and set to use internal pull-up
 // (PS/2 protocol requires clock/data to be high default)
 ps2_device_t *ps2_new(gpio_id_t clock_gpio, gpio_id_t data_gpio) {
@@ -41,16 +51,86 @@ ps2_device_t *ps2_new(gpio_id_t clock_gpio, gpio_id_t data_gpio) {
     return dev;
 }
 
+// Returns true if successfully read a bit and false if desynchronization 
+// necessitates a restart of the code
+bool read_bit(ps2_device_t *dev, int *bit) {
+    static unsigned int last_edge = 0;
+
+    // Ensure we start HIGH before reading
+    while (gpio_read(dev->clock) == 0);
+    // Wait until the clock pin reads LOW
+    while (gpio_read(dev->clock) == 1);
+    
+    unsigned int now = timer_get_ticks() / TICKS_PER_USEC;
+
+    if (last_edge && (now - last_edge) > PS2_BIT_MAX_GAP_US) {
+        last_edge = now;
+        return false;
+    }
+
+    last_edge = now;
+    // Return the data bus bit
+    *bit = gpio_read(dev->data);
+
+    return true;    
+}
+
+bool is_parity_valid(scan_code code) {
+    return ((code.onesCount + code.parityBit) % 2) == 1;
+}
+
+scan_code read_scancode(ps2_device_t *dev) {    
+    scan_code scannedCode;
+    int bit;
+
+    while (true) {        
+        // START BIT 
+        if (!read_bit(dev, &bit)) continue;
+        if (bit != 0) continue;
+        int startBit = bit; // Will always be 0
+
+        int onesCount = 0;
+        uint8_t data = 0;
+        
+        // DATA BITS
+        for (int i = 0; i < 8; i++) {
+            if (!read_bit(dev, &bit)) goto resync;
+            
+            data |= (bit & 1) << i;
+            onesCount += (bit & 1);
+        }
+
+        // PARITY BIT
+        if (!read_bit(dev, &bit)) goto resync;
+        int parityBit = bit;
+
+        // STOP BIT
+        if (!read_bit(dev, &bit)) goto resync;
+        int stopBit = bit;
+        
+        scannedCode.startBit = startBit; 
+        scannedCode.dataNum = data;
+        scannedCode.parityBit = parityBit;
+        scannedCode.stopBit = stopBit;
+        scannedCode.onesCount = onesCount;
+        
+        // Error handling for invalid parity and stop bits    
+        if (!(is_parity_valid(scannedCode))) continue;
+        if (!(scannedCode.stopBit == 1)) continue;
+
+        return scannedCode;
+
+    resync:
+       continue; 
+    }
+}
+
 // Read a single PS2 scancode. Always returns a correctly received scancode:
 // if an error occurs (e.g., start bit not detected, parity is wrong), the
 // function should read another scancode.
+// Read a single PS2 scan code.
 uint8_t ps2_read(ps2_device_t *dev) {
-    /***** TODO: Your code goes here *****/
-
-    // Start with the code you wrote in lab5
-    // Writing a separate helper function read_bit() is highly
-    // recommended: this function waits for a clock falling
-    // edge then reads the data pin. (Review code from Keyboard
-    // lecture/lab)
-    return 0xFF;
+    scan_code readCode = read_scancode(dev);
+    return readCode.dataNum;
 }
+
