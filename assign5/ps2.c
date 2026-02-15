@@ -6,6 +6,7 @@
 #include "gpio_extra.h"
 #include "malloc.h"
 #include "ps2.h"
+#include "timer.h"
 
 #define TICKS_PER_USEC 24 // 24 ticks counted per one microsecond
 #define PS2_BIT_MAX_GAP_US 500
@@ -21,19 +22,21 @@
 // (e.g., a keyboard and a mouse).
 //
 // This definition fills out the structure declared in ps2.h.
-struct ps2_device {
+typedef struct ps2_device {
     gpio_id_t clock;
     gpio_id_t data;
-};
+    unsigned int last_edge;  
+    bool reading_frame;  // true when reading a scancode
+} ps2_device_t;
 
 // Creates a new PS2 device connected to given clock and data pins,
-struct scan_code {
+typedef struct scan_code {
     unsigned int startBit;
     unsigned int dataNum;
     unsigned int parityBit;
     unsigned int stopBit;
     int onesCount;
-};
+} scan_code;
 
 // The gpios are configured as input and set to use internal pull-up
 // (PS/2 protocol requires clock/data to be high default)
@@ -48,14 +51,15 @@ ps2_device_t *ps2_new(gpio_id_t clock_gpio, gpio_id_t data_gpio) {
     dev->data = data_gpio;
     gpio_set_input(dev->data);
     gpio_set_pullup(dev->data);
+
+    dev->last_edge = 0; // start fresh
+    dev->reading_frame = false;  // not reading anything yet
     return dev;
 }
 
 // Returns true if successfully read a bit and false if desynchronization 
 // necessitates a restart of the code
 bool read_bit(ps2_device_t *dev, int *bit) {
-    static unsigned int last_edge = 0;
-
     // Ensure we start HIGH before reading
     while (gpio_read(dev->clock) == 0);
     // Wait until the clock pin reads LOW
@@ -63,15 +67,13 @@ bool read_bit(ps2_device_t *dev, int *bit) {
     
     unsigned int now = timer_get_ticks() / TICKS_PER_USEC;
 
-    if (last_edge && (now - last_edge) > PS2_BIT_MAX_GAP_US) {
-        last_edge = now;
+    if (dev->reading_frame && dev->last_edge && (now - dev->last_edge) > PS2_BIT_MAX_GAP_US) {
+        dev->last_edge = now;
         return false;
     }
-
-    last_edge = now;
+    dev->last_edge = now;
     // Return the data bus bit
     *bit = gpio_read(dev->data);
-
     return true;    
 }
 
@@ -84,10 +86,14 @@ scan_code read_scancode(ps2_device_t *dev) {
     int bit;
 
     while (true) {        
+        dev->reading_frame = false;  // idle, waiting for start bit
+                                     
         // START BIT 
         if (!read_bit(dev, &bit)) continue;
         if (bit != 0) continue;
         int startBit = bit; // Will always be 0
+        
+        dev->reading_frame = true;   // now reading scancode
 
         int onesCount = 0;
         uint8_t data = 0;
@@ -117,7 +123,8 @@ scan_code read_scancode(ps2_device_t *dev) {
         // Error handling for invalid parity and stop bits    
         if (!(is_parity_valid(scannedCode))) continue;
         if (!(scannedCode.stopBit == 1)) continue;
-
+        
+        dev->reading_frame = false;  // ready for next scancode
         return scannedCode;
 
     resync:
