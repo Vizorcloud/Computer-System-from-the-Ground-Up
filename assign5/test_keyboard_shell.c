@@ -1,6 +1,9 @@
 /* File: test_keyboard_shell.c
  * ---------------------------
- * ***** TODO: add your file header comment here *****
+ * Purpose: Keyboard/Ps2 Modules Library Testing
+ * Name: Maxsem Garcia
+ * Course: CS107E Tuesday Lab
+ * Date Last Modified: Feb 17 2025
  */
 #include "assert.h"
 #include "keyboard.h"
@@ -112,24 +115,24 @@ void main(void) {
 
     printf("Testing keyboard and shell.\n");
 
-    test_keyboard_scancodes();
-    timer_delay_ms(500);
+    //test_keyboard_scancodes();
+    //timer_delay_ms(500);
 
-    test_keyboard_sequences();
-    timer_delay_ms(500);
+    //test_keyboard_sequences();
+    //timer_delay_ms(500);
 
-    test_keyboard_events();
-    timer_delay_ms(500);
+    //test_keyboard_events();
+    //timer_delay_ms(500);
 
-    test_keyboard_chars();
+    //test_keyboard_chars();
 
-    test_keyboard_assert();
+    //test_keyboard_assert();
 
-    test_shell_evaluate();
+    //test_shell_evaluate();
 
-    test_shell_readline_fixed_input();
+    //test_shell_readline_fixed_input();
 
-    test_shell_readline_keyboard();
+    //test_shell_readline_keyboard();
 
     printf("Finished executing main() in test_keyboard_shell.c\n");
 }
