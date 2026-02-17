@@ -1,6 +1,9 @@
 /* File: ps2_assign5.c
  * -------------------
- * ***** TODO: add your file header comment here *****
+ * Purpose: Ps2 Module Library Implementation
+ * Name: Maxsem Garcia
+ * Course: CS107E Tuesday Lab
+ * Date Last Modified: Feb 17 2025
  */
 #include "gpio.h"
 #include "gpio_extra.h"
