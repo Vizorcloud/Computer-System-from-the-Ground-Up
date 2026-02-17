@@ -19,7 +19,7 @@ void fb_init(int width, int height, fb_mode_t mode) {
     module.depth = 4;
     int nbytes = module.width * module.height * module.depth;
     module.framebuffer = malloc(nbytes);
-    memset(module.framebuffer, 0x77, nbytes*2);
+    memset(module.framebuffer, 0x77, nbytes);
 
     hdmi_resolution_id_t id = hdmi_best_match(width, height);
     hdmi_init(id);
