@@ -178,6 +178,13 @@ void shell_readline(char buf[], size_t bufsize) {
     while (true) {
         curChar = module.shell_read();
         
+        // Ctrl-L
+        if (curChar == 12) {
+            module.shell_printf("\f\n");
+            index = 0;
+            break;
+        }
+
         // Stop when return
         if (curChar == '\n') {
             module.shell_printf("\n");
@@ -250,6 +257,11 @@ int shell_evaluate(const char *line) {
             }
         }
     } 
+
+    if (tokenIndex == 0) {
+        return -1;  // stop further processing
+    }
+
     // Execute command
     // Size of array / size of array element
     size_t num_commands = sizeof(commands) / sizeof(commands[0]);
@@ -263,7 +275,7 @@ int shell_evaluate(const char *line) {
     }
 
     module.shell_printf("error: no such command %s\n", tokens[0]);
-    return 1;
+    return -1;
 }
 
 void shell_run(void) {
