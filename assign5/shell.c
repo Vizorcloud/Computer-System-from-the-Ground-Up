@@ -13,8 +13,13 @@
 #include "mango.h"
 
 #define LINE_LEN 80
+#define MAX_HISTORY 10
 #define MAX_ARGS 50
 #define MAX_COMMAND_LENGTH 20
+
+int cmd_history(int argc, const char **argv);  
+int cmd_repeat(int argc, const char **argv); 
+int cmd_disassemble(int argc, const char **argv); 
 
 // Module-level global variables for shell
 static struct {
@@ -22,6 +27,16 @@ static struct {
     formatted_fn_t shell_printf;
 } module;
 
+typedef struct {
+    char history[MAX_HISTORY][LINE_LEN]; // Buffer
+    int head; // Index of head
+    int tail; // Index of Tail
+    int count;   // number of valid entries
+    int countOfAllEntries;
+} circularHistory;
+
+circularHistory commandHistory = { .head = -1, .tail = -1 };
+char previousCommand[LINE_LEN] = "";
 
 // NOTE TO STUDENTS:
 // Your shell commands output various information and respond to user
@@ -44,8 +59,118 @@ static const command_t commands[] = {
     {"clear", "clear",       "clear screen (if your terminal supports it)", cmd_clear},
     {"reboot", "reboot",     "reboot the Mango Pi", cmd_reboot},
     {"peek", "peek [addr]",  "print contents of memory at address", cmd_peek}, 
-    {"poke", "poke [addr] [val]",  "store value into memory at address", cmd_poke}
+    {"poke", "poke [addr] [val]",  "store value into memory at address", cmd_poke},
+    {"history", "history",  "prints the 10 most recently executed commands", cmd_history},
+    {"!!", "!!",  "repeat the last command", cmd_repeat},
+    {"disassemble", "disassemble [addr]", "disassemble instruction at address", cmd_disassemble} 
 };
+
+int cmd_disassemble(int argc, const char **argv) {
+    if (argc < 2) {
+        module.shell_printf("error: disassemble expects 1 argument [addr]\n");
+        return 1;
+    }
+
+    const char *end;
+    unsigned long addr = strtonum(argv[1], &end);
+
+    if (*end != '\0') {
+        module.shell_printf("error: cannot convert '%s'\n", argv[1]);
+        return 1;
+    }
+
+    if (addr % 4 != 0) {
+        module.shell_printf("error: address must be 4-byte aligned\n");
+        return 1;
+    }
+
+    unsigned int *ptr = (unsigned int *)addr;  // cast to pointer
+    module.shell_printf("%pI\n", (void *)ptr); // cast to void* for %p
+
+    return 0;
+}
+
+void save_to_history(int argc, const char* argv[]) {
+    circularHistory *historyAddress = &commandHistory;
+                
+    if (historyAddress->head == -1) {
+        // First command
+        historyAddress->head = 0;
+        historyAddress->tail = 0;
+        historyAddress->count = 1;
+        historyAddress->countOfAllEntries = 1;
+    } else {
+        // Move head forward
+        historyAddress->head = (historyAddress->head + 1) % MAX_HISTORY;
+
+        historyAddress->countOfAllEntries++;
+        if (historyAddress->count < MAX_HISTORY) {
+            historyAddress->count++;
+        } else {
+            historyAddress->tail = (historyAddress->tail + 1) % MAX_HISTORY; // overwrite oldest
+        }
+    }
+
+    // Copy argv into the history at the tail command index
+    char *historyIndexAddress = historyAddress->history[historyAddress->head];
+    size_t pos = 0;
+    for (int i = 0; i < argc; i++) {
+        size_t len = strlen(argv[i]);
+        memcpy(historyIndexAddress + pos, argv[i], len);
+        pos += len;
+        historyIndexAddress[pos++] = ' ';  // space between argv
+    }
+    historyIndexAddress[pos - 1] = '\0';  // overwrite last space
+}
+
+// Returns 0 on success or 1 on failure
+int cmd_history(int argc, const char *argv[]) {
+    save_to_history(argc, argv);
+    circularHistory *historyAddress = &commandHistory;
+
+    int index = historyAddress->tail;
+    int startNum = historyAddress->countOfAllEntries - historyAddress->count + 1; // number of oldest command
+    // calculate number of digits in largest number
+    int tmp = historyAddress->countOfAllEntries;
+    int maxDigits = 1;
+    while (tmp >= 10) {
+        tmp /= 10;
+        maxDigits++;
+    }
+    
+    for (int i = 0; i < historyAddress->count; i++) { 
+        int curNum = startNum + i;
+
+        // compute number of digits in current number
+        int tmp2 = curNum;
+        int curDigits = 1;
+        while (tmp2 >= 10) {
+            tmp2 /= 10;
+            curDigits++;
+        }
+
+        // print spaces BEFORE the digit to pad to maxDigits
+        for (int j = 0; j < (maxDigits - curDigits); j++) {
+            module.shell_printf(" ");
+        }
+        module.shell_printf("%d", startNum + i);
+        module.shell_printf(" ");
+        module.shell_printf("%s\n", historyAddress->history[index]);
+        index = (index + 1) % MAX_HISTORY;
+    }
+
+    return 0;
+}
+
+int cmd_repeat(int argc, const char *argv[]) {
+    if (previousCommand[0] == '\0') {
+        module.shell_printf("error: no command to repeat\n");
+        return 1;
+    }
+
+    module.shell_printf("%s\n", previousCommand); // optional
+    return shell_evaluate(previousCommand);
+}
 
 int cmd_poke(int argc, const char *argv[]) {
     if (argc < 3) {
@@ -174,6 +299,10 @@ void shell_bell(void) {
 void shell_readline(char buf[], size_t bufsize) {
     char curChar;
     int index = 0;
+    int length = 0;
+    circularHistory *historyAddress = &commandHistory;
+    int historyPosition = -1; // current position in history
+    bool usingHistory = false;
     
     while (true) {
         curChar = module.shell_read();
@@ -181,14 +310,153 @@ void shell_readline(char buf[], size_t bufsize) {
         // Ctrl-L
         if (curChar == 12) {
             module.shell_printf("\f\n");
+            module.shell_printf("Pi> ");
+
+            // redraw current buffer
+            for (int i = 0; i < length; i++) {
+                module.shell_printf("%c", buf[i]);
+            }
+            // restore cursor position
+            for (int i = length; i > index; i--) {
+                module.shell_printf("\b");
+            }
+
+            continue;
+        }
+        
+        // Ctrl-A
+        if (curChar == 1) {
             index = 0;
-            break;
+            module.shell_printf("\rPi> ");
+            continue;
+        }
+
+        // Ctrl-E
+        if (curChar == 5) {
+            index = length;
+            module.shell_printf("\rPi> "); // go to prompt
+            for (int i = 0; i < length; i++) {
+                module.shell_printf("%c", buf[i]);
+            }   
+            continue;
         }
 
         // Stop when return
         if (curChar == '\n') {
             module.shell_printf("\n");
             break;
+        }
+        
+        if (curChar == 0xaa) {
+            if (!usingHistory) {
+                // start at most recent command
+                if (historyAddress->count == 0) {
+                    shell_bell(); // no history
+                    continue;
+                }
+                historyPosition = historyAddress->head;
+                usingHistory = true;
+            } else if (historyPosition == historyAddress->tail) {
+                shell_bell(); // reached oldest
+                continue;
+            } else {
+                historyPosition = (historyPosition - 1 + MAX_HISTORY) % MAX_HISTORY;
+            }
+
+            int oldLength = length;   // save previous line length
+
+            size_t commandLength = strlen(historyAddress->history[historyPosition]);
+
+            // copy history into buffer
+            memcpy(buf, historyAddress->history[historyPosition], commandLength);
+            buf[commandLength] = '\0';
+
+            length = commandLength;
+            index = length;
+
+            // redraw line
+            module.shell_printf("\rPi> ");
+
+            // print new command
+            for (int i = 0; i < length; i++) {
+                module.shell_printf("%c", buf[i]);
+            }
+
+            // erase leftover characters from previous longer line
+            for (int i = length; i < oldLength; i++) {
+                module.shell_printf(" ");
+            }
+
+            // move cursor back if we erased characters
+            for (int i = oldLength; i > length; i--) {
+                module.shell_printf("\b");
+            }
+            continue;
+        }
+
+        // Down Arrow
+        if (curChar == 0xab) {
+            if (!usingHistory) {
+                shell_bell(); // not in history, can't go down
+                continue;
+            } else if (historyPosition == historyAddress->head) {
+                shell_bell(); // reached newest
+                continue;
+            } else {
+                historyPosition = (historyPosition + 1) % MAX_HISTORY;
+            }
+
+            int oldLength = length;   // save previous line length
+
+            size_t commandLength = strlen(historyAddress->history[historyPosition]);
+
+            // copy history into buffer
+            memcpy(buf, historyAddress->history[historyPosition], commandLength);
+            buf[commandLength] = '\0';
+
+            length = commandLength;
+            index = length;
+
+            // redraw line
+            module.shell_printf("\rPi> ");
+
+            // print new command
+            for (int i = 0; i < length; i++) {
+                module.shell_printf("%c", buf[i]);
+            }
+
+            // erase leftover characters from previous longer line
+            for (int i = length; i < oldLength; i++) {
+                module.shell_printf(" ");
+            }
+
+            // move cursor back if we erased characters
+            for (int i = oldLength; i > length; i--) {
+                module.shell_printf("\b");
+            }
+            continue;
+        }
+
+        // Left Arrow 
+        if (curChar == 0xac) {
+            if (index == 0) {
+                shell_bell();
+            } else {
+                index--;
+                module.shell_printf("\b");
+            }
+            continue;
+        }
+
+        // Right Arrow
+        if (curChar == 0xad) {
+            if (index == length) {
+                shell_bell();
+            } else {
+                index++;
+                module.shell_printf("\033[1C");
+            }
+            continue;
         }
 
         // reject non-ascii
@@ -199,29 +467,74 @@ void shell_readline(char buf[], size_t bufsize) {
         
         // handle backspace
         if (curChar == '\b') {
+            usingHistory = false;
+            historyPosition = historyAddress->head;
             // Prevent backspace when no char in buffer
             if (index == 0) {
                 shell_bell();
             } else {
+                for (int i = index - 1; i < length - 1; i++) {
+                    buf[i] = buf[i+1];
+                }
+
                 index--;
-                module.shell_printf("%c %c", '\b', '\b');
+                length--;
+
+                // redraw line
+                module.shell_printf("\rPi> ");
+                for (int i = 0; i < length; i++) {
+                    module.shell_printf("%c", buf[i]);
+                }
+                module.shell_printf(" ");
+                module.shell_printf("\b"); 
+                
+                // move index to correct position
+                for (int i = length; i > index; i--) {
+                    module.shell_printf("\b"); 
+                }
             }
             continue;
         }
 
         // prevent buffer overflow
-        if (index >= bufsize - 1) {
+        if (length >= bufsize - 1) {
             shell_bell();
             continue;
         }
 
         // store + echo character
-        buf[index] = curChar;
-        index++;
-        module.shell_printf("%c", curChar);
+        if (curChar > 26) { // Ignore control char
+            usingHistory = false;
+            historyPosition = historyAddress->head;
+            if (index == length) {
+                // typing at end — fast path
+                buf[index++] = curChar;
+                length++;
+                module.shell_printf("%c", curChar);
+                continue;
+            }
+
+            // Shift characters at cursor to the right
+            for (int i = length; i > index; i--) {
+                buf[i] = buf[i-1];
+            }
+
+            buf[index] = curChar;
+            index++;
+            length++;
+            module.shell_printf("\rPi> ");
+
+            for (int i = 0; i < length; i++) {
+                module.shell_printf("%c", buf[i]);
+            }
+            // Move cursor back
+            for (int i = length; i > index; i--) {
+                module.shell_printf("\b"); 
+            }
+        }
     }
     
-    buf[index] = '\0';
+    buf[length] = '\0';
 }
 
 bool is_whitespace(char ch) {
@@ -270,12 +583,23 @@ int shell_evaluate(const char *line) {
         if (strcmp(commands[i].name, tokens[0]) == 0) {
             //for (int i = 0; i < tokenIndex; i++)
             //    module.shell_printf("[%s]\n", tokens[i]);
-            return commands[i].fn(tokenIndex, (const char **)tokens);
+            int result = commands[i].fn(tokenIndex, (const char **)tokens);
+
+            if (strcmp(commands[i].name, "history") != 0 && strcmp(commands[i].name, "!!") != 0) {
+                save_to_history(tokenIndex, (const char **)tokens);
+            }
+
+            return result;
         }
     }
 
     module.shell_printf("error: no such command %s\n", tokens[0]);
     return -1;
+}
+
+void shell_saveLine(const char *line, size_t n) {
+    memcpy(previousCommand, line, n);
+    previousCommand[n] = '\0';
 }
 
 void shell_run(void) {
@@ -285,6 +609,9 @@ void shell_run(void) {
 
         module.shell_printf("Pi> ");
         shell_readline(line, sizeof(line));
+        if (!(line[0] == '!' && line[1] == '!')) {
+            shell_saveLine(line, strlen(line));
+        }
         shell_evaluate(line);
     }
 }

@@ -99,9 +99,13 @@ char keyboard_read_next(void) {
     }
     
     char character = event.key.ch;
-
+    
     // Caps lock
     if (is_alpha(event.key.ch)) {  
+        // Control Check
+        bool controlEnabled = ((event.modifiers >> 2) & 0x1) == 1;        
+        if (controlEnabled) return character - 96;
+
         character = ((event.modifiers >> 3) & 0x1) == 1 ? event.key.other_ch : character;
     }
     

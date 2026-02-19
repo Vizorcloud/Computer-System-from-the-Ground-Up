@@ -2,7 +2,7 @@
 RUN_PROGRAM   = uart_shell.bin
 TEST_PROGRAM  = test_keyboard_shell.bin
 
-MY_MODULE_SOURCES = ps2.c keyboard.c shell.c
+MY_MODULE_SOURCES = ps2.c keyboard.c shell.c printf.c
 
 # MY_MODULE_SOURCES is a list of those library modules (such as gpio.c)
 # for which you intend to use your own code. The reference implementation
