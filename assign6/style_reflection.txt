@@ -1,1 +1,73 @@
 // Style reflection submitted with assign6
+
+1. To support a different keymap like Dvorak the design would need to separate the keymap data from the logic that interprets scancodes.
+    This could be done by introducing a pointer to a current keymap, allowing the keyboard module to switch layouts at runtime without modifying the core event-handling logic.
+    This solution would require minimal changes to keyboard_read_next and the event translation functions. Adding support for additional modifiers, such as Alt+letter or Ctrl+letter, 
+    would require extending the modifier bitmask and updating the logic in keyboard_read_event and keyboard_read_next to correctly interpret combinations of modifiers. One feature the 
+    current design does not anticipate is handling key sequences or macros, for example pressing Ctrl+Alt+F1 to trigger a custom action. To accommodate this, I would add a small event history 
+    buffer within the keyboard module and provide a callback registration system. This would allow clients to define handlers for specific sequences of key events.
+
+2. One design pattern I found particularly interesting is the Command pattern. The core idea is to encapsulate a request or action as an object, effectively turning a method call into a 
+   “first-class object.” This allows us to treat actions like data: we can store them, queue them, execute them later, or even undo them. The pattern is extremely useful in situations 
+   where you want to decouple the code that triggers an action from the code that performs it, such as in input handling. For example, in a game, rather than hardcoding each controller 
+   button to call a specific function like jump() or fireGun(), we can assign each button a command object that implements a common interface with an execute() method. The input handler 
+   then simply calls execute() on the command associated with the pressed button. This makes it easy to queue commands and rebind buttons for later execution without 
+   modifying the input handling logic. It also enables undoable actions by storing previous state in the command object and providing an undo() method.
+
+    Pseudocode example
+
+        interface Command {
+            execute()
+            undo()
+        }
+
+        class JumpCommand implements Command {
+            actor
+            prevY
+            constructor(actor) { this.actor = actor }
+
+            execute() {
+                prevY = actor.y
+                actor.jump()
+            }
+
+            undo() {
+                actor.y = prevY
+            }
+        }
+
+        inputHandler.bindButton(BUTTON_X, new JumpCommand(player))
+
+        // Game loop
+        command = inputHandler.getPressedCommand()
+        if command != null:
+            command.execute()
+
+3. You could create a table (or dictionary) that maps shortcut keys to function pointers, then have the bind command insert entries into this table; when a key is pressed, you look up the 
+    function pointer and call it, effectively executing the bound command. A pseudocode example I came up with is below.
+    // Table of shortcuts
+    typedef void (*shell_fn_t)(void);
+    shell_fn_t shortcut_table[256]; // map characters to functions
+
+    // Bind a function to a shortcut
+    void bind(char key, shell_fn_t fn) {
+        shortcut_table[(unsigned char)key] = fn;
+    }
+
+    // Handle input
+    void handle_input(char key) {
+        if (shortcut_table[(unsigned char)key]) {
+            shortcut_table[(unsigned char)key](); // call bound function
+        } else {
+            // normal command processing
+        }
+    }
+
+    // Example usage
+    bind('h', help_command);  // now pressing 'h' runs help_command
+
+4. Looking at my FSM diagram, the biggest thing I noticed is how clear it makes all the different steps in reading a PS/2 scancode. You can see exactly when you’re waiting for the start bit, 
+    reading each data bit, checking parity, and verifying the stop bit, and it makes the errors obvious too. For example, if the timing is off or the parity is wrong, you just jump to a resync state. 
+    If I were handed just the diagram, I’d probably write ps2_read using a proper state variable instead of all the goto and continue stuff I have now, with a switch statement for each state. 
+    It would make the code cleaner and easier to follow because each state would handle exactly one thing and know where to go next, and errors would be handled right there instead of mixed 
+    in with the main loop. It also makes it easier to see why you need to keep track of stuff like the ones count or the current bit while reading the frame.

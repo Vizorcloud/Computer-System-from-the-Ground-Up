@@ -1,6 +1,9 @@
 /* File: fb.c
  * ----------
- * ***** TODO: add your file header comment here *****
+ * Purpose: fb Module Library Implementation
+ * Name: Maxsem Garcia
+ * Course: CS107E Tuesday Lab
+ * Date Last Modified: Feb 26 2025
  */
 #include "fb.h"
 #include "de.h"
