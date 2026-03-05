@@ -124,13 +124,14 @@ scan_code read_scancode(ps2_device_t *dev) {
         scannedCode.onesCount = onesCount;
         
         // Error handling for invalid parity and stop bits    
-        if (!(is_parity_valid(scannedCode))) continue;
-        if (!(scannedCode.stopBit == 1)) continue;
+        if (!(is_parity_valid(scannedCode))) goto resync;
+        if (!(scannedCode.stopBit == 1)) goto resync;
         
         dev->reading_frame = false;  // ready for next scancode
         return scannedCode;
 
     resync:
+       dev->reading_frame = false;
        continue; 
     }
 }
