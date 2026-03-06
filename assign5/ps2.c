@@ -63,21 +63,26 @@ ps2_device_t *ps2_new(gpio_id_t clock_gpio, gpio_id_t data_gpio) {
 // Returns true if successfully read a bit and false if desynchronization 
 // necessitates a restart of the code
 bool read_bit(ps2_device_t *dev, int *bit) {
-    // Ensure we start HIGH before reading
     while (gpio_read(dev->clock) == 0);
-    // Wait until the clock pin reads LOW
     while (gpio_read(dev->clock) == 1);
-    
+
     unsigned int now = timer_get_ticks() / TICKS_PER_USEC;
 
-    if (dev->resync && dev->last_edge && (now - dev->last_edge) > PS2_BIT_MAX_GAP_US) {
+    // If we see a gap, it signals end of a transmission — safe to resync
+    if (dev->last_edge && (now - dev->last_edge) > PS2_BIT_MAX_GAP_US) {
         dev->last_edge = now;
-        dev->resync = false;
+        dev->resync = false;  // gap seen, we're clean now
         return false;
     }
     dev->last_edge = now;
+
+    // Still mid-stream while resyncing — consume the bit, stay in resync
+    if (dev->resync) {
+        return false;
+    }
+
     *bit = gpio_read(dev->data);
-    return true;    
+    return true;
 }
 
 bool is_parity_valid(scan_code code) {
@@ -90,7 +95,6 @@ scan_code read_scancode(ps2_device_t *dev) {
 
     while (true) {                   
         if (!read_bit(dev, &bit)) continue;
-        if (dev->resync) continue;  
         if (bit != 0) continue;
         int startBit = bit; // Will always be 0
 
