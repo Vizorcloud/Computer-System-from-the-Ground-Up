@@ -4,4 +4,5 @@
 
 .globl backtrace_get_fp
 backtrace_get_fp:
-    # ***** TODO: Your code goes here
+    mv a0, s0
+    ret
