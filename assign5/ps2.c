@@ -70,7 +70,7 @@ bool read_bit(ps2_device_t *dev, int *bit) {
     
     unsigned int now = timer_get_ticks() / TICKS_PER_USEC;
 
-    if (dev->last_edge && (now - dev->last_edge) > PS2_BIT_MAX_GAP_US) {
+    if (dev->resync && dev->last_edge && (now - dev->last_edge) > PS2_BIT_MAX_GAP_US) {
         dev->last_edge = now;
         dev->resync = false;
         return false;
