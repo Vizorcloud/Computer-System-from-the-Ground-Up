@@ -11,6 +11,11 @@
 #include "malloc.h"
 #include "ringbuffer.h"
 #include "ps2.h"
+#include "timer.h"
+
+#define TICKS_PER_USEC 24 // 24 ticks counted per one microsecond
+#define PS2_BIT_MAX_GAP_US 500
+#define PS2_TIMEOUT_TICKS (PS2_BIT_MAX_GAP_US * TICKS_PER_USEC)  // 500 * 24 = 12000
 
 typedef struct ps2_device {
     gpio_id_t clock;
@@ -19,10 +24,21 @@ typedef struct ps2_device {
     uint8_t data_byte;    // accumulates data bits
     int ones_count;       // count of 1-bits for parity check
     rb_t *scancode_queue;
+    uint32_t last_bit_time;   // <-- ADD THIS
 } ps2_device_t;
 
 static void ps2_handler(void *aux_data) {
     ps2_device_t *dev = aux_data;
+
+    // Check for timeout — if gap too long, discard partial scancode
+    uint32_t now = timer_get_ticks();
+    if (dev->bit_count > 0 && (now - dev->last_bit_time) > PS2_TIMEOUT_TICKS) {
+        dev->bit_count  = 0;
+        dev->data_byte  = 0;
+        dev->ones_count = 0;
+    }
+    dev->last_bit_time = now;   // update AFTER the check
+
     int bit = gpio_read(dev->data);
 
     switch (dev->bit_count) {
@@ -82,6 +98,7 @@ ps2_device_t *ps2_new(gpio_id_t clock_gpio, gpio_id_t data_gpio) {
     dev->data_byte  = 0;
     dev->ones_count = 0;
     dev->scancode_queue = rb_new();
+    dev->last_bit_time = 0;
 
     // gpio-level interrupt setup (local to this device)
     gpio_interrupt_init();
