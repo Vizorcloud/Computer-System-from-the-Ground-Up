@@ -29,7 +29,7 @@ typedef struct ps2_device {
     gpio_id_t clock;
     gpio_id_t data;
     unsigned int last_edge;  
-    bool reading_frame;  // true when reading a scancode
+    bool resync;  
 } ps2_device_t;
 
 // Creates a new PS2 device connected to given clock and data pins,
@@ -56,7 +56,7 @@ ps2_device_t *ps2_new(gpio_id_t clock_gpio, gpio_id_t data_gpio) {
     gpio_set_pullup(dev->data);
 
     dev->last_edge = 0; // start fresh
-    dev->reading_frame = false;  // not reading anything yet
+    dev->resync = false;
     return dev;
 }
 
@@ -70,12 +70,12 @@ bool read_bit(ps2_device_t *dev, int *bit) {
     
     unsigned int now = timer_get_ticks() / TICKS_PER_USEC;
 
-    if (dev->reading_frame && dev->last_edge && (now - dev->last_edge) > PS2_BIT_MAX_GAP_US) {
+    if (dev->last_edge && (now - dev->last_edge) > PS2_BIT_MAX_GAP_US) {
         dev->last_edge = now;
+        dev->resync = false;
         return false;
     }
     dev->last_edge = now;
-    // Return the data bus bit
     *bit = gpio_read(dev->data);
     return true;    
 }
@@ -88,15 +88,11 @@ scan_code read_scancode(ps2_device_t *dev) {
     scan_code scannedCode;
     int bit;
 
-    while (true) {        
-        dev->reading_frame = false;  // idle, waiting for start bit
-                                     
-        // START BIT 
+    while (true) {                   
         if (!read_bit(dev, &bit)) continue;
+        if (dev->resync) continue;  
         if (bit != 0) continue;
         int startBit = bit; // Will always be 0
-        
-        dev->reading_frame = true;   // now reading scancode
 
         int onesCount = 0;
         uint8_t data = 0;
@@ -127,11 +123,10 @@ scan_code read_scancode(ps2_device_t *dev) {
         if (!(is_parity_valid(scannedCode))) goto resync;
         if (!(scannedCode.stopBit == 1)) goto resync;
         
-        dev->reading_frame = false;  // ready for next scancode
         return scannedCode;
 
     resync:
-       dev->reading_frame = false;
+       dev->resync = true;   
        continue; 
     }
 }
