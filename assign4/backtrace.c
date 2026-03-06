@@ -55,11 +55,8 @@ long __stack_chk_guard = 0x0f1e2d3c4b5a6978;
 
 void __stack_chk_fail(void)  {
     uintptr_t *fp = (uintptr_t *)backtrace_get_fp();
-    //printf("Initial fp from backtrace_get_fp(): %p\n", fp);
-    fp = (uintptr_t *)fp[-2]; // walk one frame up past __stack_chk_fail helper
-    //printf("Frame above __stack_chk_fail: %p\n",fp);
-    uintptr_t ra = fp[-1];    // RA of the bad actor 
-    //printf("Saved RA of bad actor: 0x%lx\n", ra);
+    uintptr_t ra = fp[-1] - 4;    // RA of the bad actor 
+
     symbol_t sym;
     const char *fn_name;
 
