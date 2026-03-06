@@ -11,28 +11,16 @@
 #include "ps2.h"
 #include "timer.h"
 
-#define TICKS_PER_USEC 24 // 24 ticks counted per one microsecond
+#define TICKS_PER_USEC 24
 #define PS2_BIT_MAX_GAP_US 500
-// A ps2_device is a structure that stores all of the state and information
-// needed for a PS2 device. The clock field stores the gpio id for the
-// clock pin, and the data field stores the gpio id for the data pin.
-// Read ps2_new for example code that sets and uses these fields.
-//
-// You may extend the ps2_device structure with additional fields as needed.
-// A pointer to the current ps2_device is passed into all ps2_ calls.
-// Storing state in this structure is preferable to using global variables:
-// it allows your driver to support multiple PS2 devices accessed concurrently
-// (e.g., a keyboard and a mouse).
-//
-// This definition fills out the structure declared in ps2.h.
+
 typedef struct ps2_device {
     gpio_id_t clock;
     gpio_id_t data;
-    unsigned int last_edge;  
-    bool resync;  
+    unsigned int last_edge;
+    bool resync;
 } ps2_device_t;
 
-// Creates a new PS2 device connected to given clock and data pins,
 typedef struct scan_code {
     unsigned int startBit;
     unsigned int dataNum;
@@ -41,10 +29,7 @@ typedef struct scan_code {
     int onesCount;
 } scan_code;
 
-// The gpios are configured as input and set to use internal pull-up
-// (PS/2 protocol requires clock/data to be high default)
 ps2_device_t *ps2_new(gpio_id_t clock_gpio, gpio_id_t data_gpio) {
-    // consider why must malloc be used to allocate device
     ps2_device_t *dev = malloc(sizeof(*dev));
 
     dev->clock = clock_gpio;
@@ -55,28 +40,29 @@ ps2_device_t *ps2_new(gpio_id_t clock_gpio, gpio_id_t data_gpio) {
     gpio_set_input(dev->data);
     gpio_set_pullup(dev->data);
 
-    dev->last_edge = 0; // start fresh
+    dev->last_edge = 0;
     dev->resync = false;
     return dev;
 }
 
-// Returns true if successfully read a bit and false if desynchronization 
-// necessitates a restart of the code
+// Returns true if bit was successfully read as part of current frame.
+// Returns false if a gap or resync condition was detected.
+// On gap: reads and stores the bit in *bit, clears resync (caller may use it).
+// On mid-stream resync: consumes clock edge, discards bit.
 bool read_bit(ps2_device_t *dev, int *bit) {
     while (gpio_read(dev->clock) == 0);
     while (gpio_read(dev->clock) == 1);
 
     unsigned int now = timer_get_ticks() / TICKS_PER_USEC;
-
-    // If we see a gap, it signals end of a transmission — safe to resync
-    if (dev->last_edge && (now - dev->last_edge) > PS2_BIT_MAX_GAP_US) {
-        dev->last_edge = now;
-        dev->resync = false;  // gap seen, we're clean now
-        return false;
-    }
+    unsigned int last = dev->last_edge;
     dev->last_edge = now;
 
-    // Still mid-stream while resyncing — consume the bit, stay in resync
+    if (last && (now - last) > PS2_BIT_MAX_GAP_US) {
+        *bit = gpio_read(dev->data);
+        dev->resync = false;
+        return false;
+    }
+
     if (dev->resync) {
         return false;
     }
@@ -89,22 +75,24 @@ bool is_parity_valid(scan_code code) {
     return ((code.onesCount + code.parityBit) % 2) == 1;
 }
 
-scan_code read_scancode(ps2_device_t *dev) {    
+scan_code read_scancode(ps2_device_t *dev) {
     scan_code scannedCode;
     int bit;
 
-    while (true) {                   
-        if (!read_bit(dev, &bit)) continue;
+    while (true) {
+        if (!read_bit(dev, &bit)) {
+            if (!dev->resync && bit == 0) goto got_start;
+            continue;
+        }
         if (bit != 0) continue;
-        int startBit = bit; // Will always be 0
 
+    got_start:;
         int onesCount = 0;
         uint8_t data = 0;
-        
+
         // DATA BITS
         for (int i = 0; i < 8; i++) {
             if (!read_bit(dev, &bit)) goto resync;
-            
             data |= (bit & 1) << i;
             onesCount += (bit & 1);
         }
@@ -116,31 +104,25 @@ scan_code read_scancode(ps2_device_t *dev) {
         // STOP BIT
         if (!read_bit(dev, &bit)) goto resync;
         int stopBit = bit;
-        
-        scannedCode.startBit = startBit; 
+
+        scannedCode.startBit = 0;
         scannedCode.dataNum = data;
         scannedCode.parityBit = parityBit;
         scannedCode.stopBit = stopBit;
         scannedCode.onesCount = onesCount;
-        
-        // Error handling for invalid parity and stop bits    
-        if (!(is_parity_valid(scannedCode))) goto resync;
-        if (!(scannedCode.stopBit == 1)) goto resync;
-        
+
+        if (!is_parity_valid(scannedCode)) goto resync;
+        if (scannedCode.stopBit != 1) goto resync;
+
         return scannedCode;
 
     resync:
-       dev->resync = true;   
-       continue; 
+        dev->resync = true;
+        continue;
     }
 }
 
-// Read a single PS2 scancode. Always returns a correctly received scancode:
-// if an error occurs (e.g., start bit not detected, parity is wrong), the
-// function should read another scancode.
-// Read a single PS2 scan code.
 uint8_t ps2_read(ps2_device_t *dev) {
     scan_code readCode = read_scancode(dev);
     return readCode.dataNum;
 }
-
