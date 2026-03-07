@@ -18,7 +18,6 @@ typedef struct ps2_device {
     gpio_id_t clock;
     gpio_id_t data;
     unsigned int last_edge;
-    bool resync;
 } ps2_device_t;
 
 typedef struct scan_code {
@@ -31,24 +30,19 @@ typedef struct scan_code {
 
 ps2_device_t *ps2_new(gpio_id_t clock_gpio, gpio_id_t data_gpio) {
     ps2_device_t *dev = malloc(sizeof(*dev));
-
     dev->clock = clock_gpio;
     gpio_set_input(dev->clock);
     gpio_set_pullup(dev->clock);
-
     dev->data = data_gpio;
     gpio_set_input(dev->data);
     gpio_set_pullup(dev->data);
-
     dev->last_edge = 0;
-    dev->resync = false;
     return dev;
 }
 
-// Returns true if bit was successfully read as part of current frame.
-// Returns false if a gap or resync condition was detected.
-// On gap: reads and stores the bit in *bit, clears resync (caller may use it).
-// On mid-stream resync: consumes clock edge, discards bit.
+// Waits for falling clock edge, reads data bit.
+// Returns false if gap detected (timeout), true otherwise.
+// Always writes the bit value to *bit.
 bool read_bit(ps2_device_t *dev, int *bit) {
     while (gpio_read(dev->clock) == 0);
     while (gpio_read(dev->clock) == 1);
@@ -57,18 +51,11 @@ bool read_bit(ps2_device_t *dev, int *bit) {
     unsigned int last = dev->last_edge;
     dev->last_edge = now;
 
-    if (last && (now - last) > PS2_BIT_MAX_GAP_US) {
-        *bit = gpio_read(dev->data);
-        dev->resync = false;
-        return false;
-    }
-
-    if (dev->resync) {
-        *bit = gpio_read(dev->data);  
-        return false;
-    }
-
     *bit = gpio_read(dev->data);
+
+    if (last && (now - last) > PS2_BIT_MAX_GAP_US) {
+        return false;  // gap detected, caller should treat this as a new start bit
+    }
     return true;
 }
 
@@ -81,11 +68,9 @@ scan_code read_scancode(ps2_device_t *dev) {
     int bit;
 
     while (true) {
+        // wait for start bit (must be 0)
         if (!read_bit(dev, &bit)) {
-            if (bit == 0) {
-                dev->resync = false;  // ← add this line
-                goto got_start;
-            }
+            if (bit == 0) goto got_start;  // gap bit is the new start bit
             continue;
         }
         if (bit != 0) continue;
@@ -94,16 +79,30 @@ scan_code read_scancode(ps2_device_t *dev) {
         int onesCount = 0;
         uint8_t data = 0;
 
+        // DATA BITS
+        bool failed = false;
         for (int i = 0; i < 8; i++) {
-            if (!read_bit(dev, &bit)) goto resync;
+            if (!read_bit(dev, &bit)) { failed = true; break; }
             data |= (bit & 1) << i;
             onesCount += (bit & 1);
         }
+        if (failed) {
+            if (bit == 0) goto got_start;
+            continue;
+        }
 
-        if (!read_bit(dev, &bit)) goto resync;
+        // PARITY BIT
+        if (!read_bit(dev, &bit)) {
+            if (bit == 0) goto got_start;
+            continue;
+        }
         int parityBit = bit;
 
-        if (!read_bit(dev, &bit)) goto resync;
+        // STOP BIT
+        if (!read_bit(dev, &bit)) {
+            if (bit == 0) goto got_start;
+            continue;
+        }
         int stopBit = bit;
 
         scannedCode.startBit = 0;
@@ -112,14 +111,10 @@ scan_code read_scancode(ps2_device_t *dev) {
         scannedCode.stopBit = stopBit;
         scannedCode.onesCount = onesCount;
 
-        if (!is_parity_valid(scannedCode)) goto resync;
-        if (scannedCode.stopBit != 1) goto resync;
+        if (!is_parity_valid(scannedCode)) continue;  // retry, no resync needed
+        if (scannedCode.stopBit != 1) continue;        // retry, no resync needed
 
         return scannedCode;
-
-    resync:
-        dev->resync = true;
-        continue;
     }
 }
 
