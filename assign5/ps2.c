@@ -82,7 +82,10 @@ scan_code read_scancode(ps2_device_t *dev) {
 
     while (true) {
         if (!read_bit(dev, &bit)) {
-            if (bit == 0) goto got_start;  // removed !dev->resync check
+            if (bit == 0) {
+                dev->resync = false;  // ← add this line
+                goto got_start;
+            }
             continue;
         }
         if (bit != 0) continue;
