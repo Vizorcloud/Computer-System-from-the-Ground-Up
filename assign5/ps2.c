@@ -64,6 +64,7 @@ bool read_bit(ps2_device_t *dev, int *bit) {
     }
 
     if (dev->resync) {
+        *bit = gpio_read(dev->data);  
         return false;
     }
 
