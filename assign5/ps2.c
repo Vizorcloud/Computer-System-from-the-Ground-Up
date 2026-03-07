@@ -82,7 +82,7 @@ scan_code read_scancode(ps2_device_t *dev) {
 
     while (true) {
         if (!read_bit(dev, &bit)) {
-            if (!dev->resync && bit == 0) goto got_start;
+            if (bit == 0) goto got_start;  // removed !dev->resync check
             continue;
         }
         if (bit != 0) continue;
@@ -91,18 +91,15 @@ scan_code read_scancode(ps2_device_t *dev) {
         int onesCount = 0;
         uint8_t data = 0;
 
-        // DATA BITS
         for (int i = 0; i < 8; i++) {
             if (!read_bit(dev, &bit)) goto resync;
             data |= (bit & 1) << i;
             onesCount += (bit & 1);
         }
 
-        // PARITY BIT
         if (!read_bit(dev, &bit)) goto resync;
         int parityBit = bit;
 
-        // STOP BIT
         if (!read_bit(dev, &bit)) goto resync;
         int stopBit = bit;
 
