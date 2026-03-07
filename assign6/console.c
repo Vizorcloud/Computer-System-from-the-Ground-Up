@@ -30,8 +30,8 @@ static void put_char(char ch);
 static void redraw(void);
 
 void console_init(int nrows, int ncols, color_t foreground, color_t background) {
-    gl_init(800, 600, GL_DOUBLEBUFFER);
     const static int LINE_SPACING = 5;
+    gl_init(ncols * gl_get_char_width(), nrows * (gl_get_char_height() + LINE_SPACING), GL_DOUBLEBUFFER);
 
     module.nrows = nrows;
     module.ncols = ncols;

@@ -57,7 +57,7 @@ color_t gl_read_pixel(int x, int y) {
     unsigned int (*pixelGrid)[width] = fb_get_draw_buffer();
 
     // Returns black on invalid grab
-    if (x < 0 || x >= width || y < 0 || y >= height) return 0xFF000000;
+    if (x < 0 || x >= width || y < 0 || y >= height) return 0;
 
     color_t pixelColor = pixelGrid[y][x];
     return pixelColor;
