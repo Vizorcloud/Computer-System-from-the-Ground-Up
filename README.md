@@ -7,7 +7,7 @@ The objective of this project was to build a complete, standalone computer syste
 
 Starting from bare RISC-V assembly and memory-mapped GPIO control, the system was built incrementally, layer by layer:
 
-**Foundations**: Wrote the boot sequence, GPIO drivers, and a UART serial communication driver, along with a from-scratch C string library and printf implementation — establishing the basic ability to control hardware and observe program behavior with no debugging tools beyond what I built myself.
+**Foundations**: Wrote the boot sequence, GPIO drivers, and a UART serial communication driver, along with a from-scratch C string library and printf implementation — establishing the basic ability to control hardware and observe program behavior with no debugging tools beyond what I built myself./n
 **Memory** **management**: Implemented a stack backtrace tool using inline RISC-V assembly to walk frame pointers and resolve symbols from the ELF symbol table, plus a heap allocator (malloc/free) with block headers, free-list recycling, splitting, and coalescing — turning a naive bump allocator into a functioning dynamic memory system, validated under randomized stress testing.
 **Input**: Built a PS/2 keyboard driver from the physical protocol up — decoding 11-bit scancode packets with parity and timeout error recovery — then a layered keyboard module handling modifiers, key events, and typed characters, and a command-line shell with a custom parser and command dispatch table.
 **Output**: Implemented a framebuffer and graphics library supporting double-buffering, pixel/rectangle drawing with clipping, and text rendering, then built a text console on top of it handling cursor movement, line wrapping, and scrolling — giving the system a real graphical display.
